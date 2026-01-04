@@ -20,6 +20,11 @@ class Settings(BaseSettings):
     LITELLM_API_KEY: str = ""
     LITELLM_API_BASE: str = ""
 
+    # iFlow API 配置
+    IFLOW_API_KEY: str = ""
+    IFLOW_API_URL: str = "https://apis.iflow.cn/v1/chat/completions"
+    IFLOW_MODEL: str = "tstars2.0"
+
     # 通义千问配置（litellm 会自动使用）
     DASHSCOPE_API_KEY: str = ""
 
@@ -38,13 +43,19 @@ class Settings(BaseSettings):
     # CORS 配置
     CORS_ORIGINS: str = "http://localhost:5173,http://localhost:3000"
 
+    # Ollama 配置
+    OLLAMA_BASE_URL: str = "http://localhost:11434"
+    OLLAMA_EMBEDDING_MODEL: str = "nomic-embed-text"
+    OLLAMA_LLM_MODEL: str = "qwen2.5"
+
     # 向量数据库配置
-    VECTOR_DIMENSION: int = 1536
-    EMBEDDING_MODEL: str = "text-embedding-ada-002"
+    VECTOR_DIMENSION: int = 768
+    EMBEDDING_MODEL: str = "ollama"
+    EMBEDDING_PROVIDER: str = "ollama"  # 可选: ollama, openai, litellm
 
     # RAG 配置
-    CHUNK_SIZE: int = 1000
-    CHUNK_OVERLAP: int = 200
+    CHUNK_SIZE: int = 500
+    CHUNK_OVERLAP: int = 50
     TOP_K: int = 5
 
     class Config:

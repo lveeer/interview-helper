@@ -130,7 +130,7 @@ const loadDocumentList = async () => {
   try {
     const res = await getKnowledgeList()
     if (res.code === 200) {
-      documentList.value = res.data.data || []
+      documentList.value = res.data || []
     }
   } catch (error) {
     console.error('加载文档列表失败:', error)

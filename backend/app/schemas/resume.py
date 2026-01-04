@@ -1,6 +1,7 @@
-from pydantic import BaseModel
-from typing import Optional, List, Dict, Any
+from pydantic import BaseModel, field_validator
+from typing import Optional, List, Dict, Any, Union
 from datetime import datetime
+import json
 
 
 class ResumeUpload(BaseModel):
@@ -28,6 +29,84 @@ class ResumeResponse(BaseModel):
     projects: Optional[List[Dict[str, Any]]] = None
     highlights: Optional[List[str]] = None
     created_at: datetime
+
+    @field_validator('personal_info', mode='before')
+    @classmethod
+    def parse_personal_info(cls, v: Optional[Union[str, Dict]]) -> Optional[Dict]:
+        """解析个人信息的 JSON 字符串"""
+        if v is None:
+            return None
+        if isinstance(v, str):
+            try:
+                return json.loads(v)
+            except json.JSONDecodeError:
+                return {}
+        return v
+
+    @field_validator('education', mode='before')
+    @classmethod
+    def parse_education(cls, v: Optional[Union[str, List]]) -> Optional[List]:
+        """解析教育背景的 JSON 字符串"""
+        if v is None:
+            return None
+        if isinstance(v, str):
+            try:
+                return json.loads(v)
+            except json.JSONDecodeError:
+                return []
+        return v
+
+    @field_validator('experience', mode='before')
+    @classmethod
+    def parse_experience(cls, v: Optional[Union[str, List]]) -> Optional[List]:
+        """解析工作经历的 JSON 字符串"""
+        if v is None:
+            return None
+        if isinstance(v, str):
+            try:
+                return json.loads(v)
+            except json.JSONDecodeError:
+                return []
+        return v
+
+    @field_validator('skills', mode='before')
+    @classmethod
+    def parse_skills(cls, v: Optional[Union[str, List]]) -> Optional[List]:
+        """解析技能的 JSON 字符串"""
+        if v is None:
+            return None
+        if isinstance(v, str):
+            try:
+                return json.loads(v)
+            except json.JSONDecodeError:
+                return []
+        return v
+
+    @field_validator('projects', mode='before')
+    @classmethod
+    def parse_projects(cls, v: Optional[Union[str, List]]) -> Optional[List]:
+        """解析项目经历的 JSON 字符串"""
+        if v is None:
+            return None
+        if isinstance(v, str):
+            try:
+                return json.loads(v)
+            except json.JSONDecodeError:
+                return []
+        return v
+
+    @field_validator('highlights', mode='before')
+    @classmethod
+    def parse_highlights(cls, v: Optional[Union[str, List]]) -> Optional[List]:
+        """解析亮点的 JSON 字符串"""
+        if v is None:
+            return None
+        if isinstance(v, str):
+            try:
+                return json.loads(v)
+            except json.JSONDecodeError:
+                return []
+        return v
 
     class Config:
         from_attributes = True

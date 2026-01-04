@@ -19,8 +19,11 @@ async def upload_resume(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """上传简历文件"""
+    """上传简历文件并使用 LLM 增强解析"""
     from app.schemas.common import ApiResponse
+    import logging
+
+    logger = logging.getLogger(__name__)
 
     # 验证文件类型
     file_ext = os.path.splitext(file.filename)[1].lower()
@@ -39,6 +42,8 @@ async def upload_resume(
         content = await file.read()
         f.write(content)
 
+    logger.info(f"用户 {current_user.id} 上传简历: {file.filename}")
+
     # 创建简历记录
     db_resume = Resume(
         user_id=current_user.id,
@@ -50,20 +55,45 @@ async def upload_resume(
     db.commit()
     db.refresh(db_resume)
 
-    # 调用简历解析服务
+    # 调用简历解析服务（使用 LLM 增强）
     try:
-        from app.services.resume_service import ResumeParser
-        parsed_data = ResumeParser.parse_resume(file_path)
-        db_resume.personal_info = json.dumps(parsed_data.get("personal_info"))
-        db_resume.education = json.dumps(parsed_data.get("education"))
-        db_resume.experience = json.dumps(parsed_data.get("experience"))
-        db_resume.skills = json.dumps(parsed_data.get("skills"))
-        db_resume.projects = json.dumps(parsed_data.get("projects"))
-        db_resume.highlights = json.dumps(parsed_data.get("highlights"))
+        from app.services.resume_service import parse_resume_with_llm
+        from app.services.llm_service import get_iflow_llm
+        
+        # 获取 LLM 服务
+        llm_service = await get_iflow_llm()
+        
+        # 使用 LLM 增强解析
+        parsed_data = await parse_resume_with_llm(file_path, llm_service)
+        
+        # 保存解析结果
+        db_resume.personal_info = json.dumps(parsed_data.get("personal_info"), ensure_ascii=False)
+        db_resume.education = json.dumps(parsed_data.get("education"), ensure_ascii=False)
+        db_resume.experience = json.dumps(parsed_data.get("experience"), ensure_ascii=False)
+        db_resume.skills = json.dumps(parsed_data.get("skills"), ensure_ascii=False)
+        db_resume.projects = json.dumps(parsed_data.get("projects"), ensure_ascii=False)
+        db_resume.highlights = json.dumps(parsed_data.get("highlights"), ensure_ascii=False)
         db.commit()
+        
+        logger.info(f"简历 {db_resume.id} 解析完成，提取到 {len(parsed_data.get('skills', []))} 个技能")
+        
     except Exception as e:
-        print(f"简历解析失败: {e}")
+        logger.error(f"简历解析失败: {e}", exc_info=True)
         # 解析失败不影响简历上传，继续返回
+        # 可以选择在这里使用基础解析作为后备
+        try:
+            from app.services.resume_service import ResumeParser
+            parsed_data = ResumeParser.parse_resume(file_path)
+            db_resume.personal_info = json.dumps(parsed_data.get("personal_info"), ensure_ascii=False)
+            db_resume.education = json.dumps(parsed_data.get("education"), ensure_ascii=False)
+            db_resume.experience = json.dumps(parsed_data.get("experience"), ensure_ascii=False)
+            db_resume.skills = json.dumps(parsed_data.get("skills"), ensure_ascii=False)
+            db_resume.projects = json.dumps(parsed_data.get("projects"), ensure_ascii=False)
+            db_resume.highlights = json.dumps(parsed_data.get("highlights"), ensure_ascii=False)
+            db.commit()
+            logger.info("使用基础解析完成简历解析")
+        except Exception as fallback_error:
+            logger.error(f"基础解析也失败: {fallback_error}", exc_info=True)
 
     return ApiResponse(
         code=201,

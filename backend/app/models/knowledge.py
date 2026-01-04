@@ -14,6 +14,9 @@ class KnowledgeDocument(Base):
     file_type = Column(String(20))
     content = Column(Text)
     meta_info = Column(Text)  # JSON 格式存储额外元数据
+    status = Column(String(20), default="pending")  # pending, processing, completed, failed
+    chunk_count = Column(Integer, default=0)
+    error_message = Column(Text)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
