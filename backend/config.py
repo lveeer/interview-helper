@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     # JWT 配置
     SECRET_KEY: str = "your-secret-key-change-this-in-production"
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 43200
 
     # LiteLLM 配置
     LITELLM_MODEL: str = "qwen/qwen-turbo"
@@ -45,11 +45,11 @@ class Settings(BaseSettings):
 
     # Ollama 配置
     OLLAMA_BASE_URL: str = "http://localhost:11434"
-    OLLAMA_EMBEDDING_MODEL: str = "nomic-embed-text"
+    OLLAMA_EMBEDDING_MODEL: str = "qwen3-embedding:4b"
     OLLAMA_LLM_MODEL: str = "qwen2.5"
 
     # 向量数据库配置
-    VECTOR_DIMENSION: int = 768
+    VECTOR_DIMENSION: int = 2560
     EMBEDDING_MODEL: str = "ollama"
     EMBEDDING_PROVIDER: str = "ollama"  # 可选: ollama, openai, litellm
 
@@ -57,6 +57,13 @@ class Settings(BaseSettings):
     CHUNK_SIZE: int = 500
     CHUNK_OVERLAP: int = 50
     TOP_K: int = 5
+
+    # RAG 优化配置
+    ENABLE_QUERY_EXPANSION: bool = True  # 启用查询扩展
+    QUERY_EXPANSION_COUNT: int = 3  # 查询扩展数量
+    ENABLE_HYBRID_SEARCH: bool = True  # 启用混合检索
+    ENABLE_RERANKING: bool = True  # 启用重排序
+    RERANK_TOP_K: int = 10  # 重排序候选数量
 
     class Config:
         env_file = ".env"

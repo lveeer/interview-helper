@@ -199,29 +199,6 @@ class LiteLLMService:
             raise Exception(f"流式 LLM 调用失败: {str(e)}")
 
 
-# 全局 LLM 服务实例
-_llm_service_instance: Optional[LiteLLMService] = None
-
-
-async def get_llm() -> LiteLLMService:
-    """
-    获取全局 LLM 服务实例（单例模式）
-
-    Returns:
-        LiteLLMService 实例
-    """
-    global _llm_service_instance
-    if _llm_service_instance is None:
-        _llm_service_instance = LiteLLMService()
-    return _llm_service_instance
-
-
-def reset_llm_service():
-    """重置 LLM 服务实例（用于测试或切换配置）"""
-    global _llm_service_instance
-    _llm_service_instance = None
-
-
 class iFlowLLMService:
     """基于 iFlow API 的 LLM 服务"""
 
@@ -229,6 +206,36 @@ class iFlowLLMService:
         self.api_key = settings.IFLOW_API_KEY
         self.api_url = settings.IFLOW_API_URL
         self.model = settings.IFLOW_MODEL
+
+    async def generate_text(
+        self,
+        prompt: str,
+        temperature: float = 0.7,
+        max_tokens: int = 2000,
+        **kwargs
+    ) -> str:
+        """
+        生成文本（兼容接口）
+
+        Args:
+            prompt: 提示词
+            temperature: 温度参数（0-1）
+            max_tokens: 最大生成 token 数
+            **kwargs: 其他参数
+
+        Returns:
+            生成的文本
+        """
+        messages = [{"role": "user", "content": prompt}]
+
+        response = await self.generate_chat(
+            messages=messages,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            **kwargs
+        )
+
+        return response
 
     async def generate_chat(
         self,
@@ -280,7 +287,7 @@ class iFlowLLMService:
         }
 
         try:
-            async with httpx.AsyncClient(timeout=60.0) as client:
+            async with httpx.AsyncClient(timeout=120.0) as client:
                 response = await client.post(
                     self.api_url,
                     json=payload,
@@ -295,8 +302,19 @@ class iFlowLLMService:
                 else:
                     raise Exception("API 返回空响应")
 
+        except httpx.TimeoutException:
+            raise Exception("iFlow API 调用超时，请稍后重试或检查网络连接")
         except httpx.HTTPStatusError as e:
-            raise Exception(f"iFlow API 调用失败 (HTTP {e.response.status_code}): {e.response.text}")
+            error_msg = f"iFlow API 调用失败 (HTTP {e.response.status_code})"
+            try:
+                error_detail = e.response.json()
+                if "error" in error_detail:
+                    error_msg += f": {error_detail['error']}"
+            except:
+                error_msg += f": {e.response.text}"
+            raise Exception(error_msg)
+        except httpx.RequestError as e:
+            raise Exception(f"iFlow API 网络请求失败: {str(e)}")
         except Exception as e:
             raise Exception(f"iFlow API 调用失败: {str(e)}")
 
@@ -346,7 +364,7 @@ class iFlowLLMService:
         }
 
         try:
-            async with httpx.AsyncClient(timeout=60.0) as client:
+            async with httpx.AsyncClient(timeout=120.0) as client:
                 async with client.stream(
                     "POST",
                     self.api_url,
@@ -372,10 +390,44 @@ class iFlowLLMService:
                             except json.JSONDecodeError:
                                 continue
 
+        except httpx.TimeoutException:
+            raise Exception("iFlow 流式 API 调用超时，请稍后重试或检查网络连接")
         except httpx.HTTPStatusError as e:
-            raise Exception(f"iFlow 流式 API 调用失败 (HTTP {e.response.status_code}): {e.response.text}")
+            error_msg = f"iFlow 流式 API 调用失败 (HTTP {e.response.status_code})"
+            try:
+                error_detail = e.response.json()
+                if "error" in error_detail:
+                    error_msg += f": {error_detail['error']}"
+            except:
+                error_msg += f": {e.response.text}"
+            raise Exception(error_msg)
+        except httpx.RequestError as e:
+            raise Exception(f"iFlow 流式 API 网络请求失败: {str(e)}")
         except Exception as e:
             raise Exception(f"iFlow 流式 API 调用失败: {str(e)}")
+
+
+# 全局 LLM 服务实例
+_llm_service_instance: Optional[iFlowLLMService] = None
+
+
+async def get_llm() -> iFlowLLMService:
+    """
+    获取全局 LLM 服务实例（单例模式）
+
+    Returns:
+        iFlowLLMService 实例
+    """
+    global _llm_service_instance
+    if _llm_service_instance is None:
+        _llm_service_instance = iFlowLLMService()
+    return _llm_service_instance
+
+
+def reset_llm_service():
+    """重置 LLM 服务实例（用于测试或切换配置）"""
+    global _llm_service_instance
+    _llm_service_instance = None
 
 
 # 全局 iFlow 服务实例
@@ -427,7 +479,7 @@ class OllamaEmbeddingService:
 
         try:
             # 调用 Ollama API
-            async with httpx.AsyncClient(timeout=60.0) as client:
+            async with httpx.AsyncClient(timeout=120.0) as client:
                 response = await client.post(
                     f"{self.base_url}/api/embeddings",
                     json={
@@ -444,8 +496,19 @@ class OllamaEmbeddingService:
                 else:
                     raise Exception("Ollama API 返回空响应")
 
+        except httpx.TimeoutException:
+            raise Exception("Ollama API 调用超时，请稍后重试或检查 Ollama 服务是否正常运行")
         except httpx.HTTPStatusError as e:
-            raise Exception(f"Ollama API 调用失败 (HTTP {e.response.status_code}): {e.response.text}")
+            error_msg = f"Ollama API 调用失败 (HTTP {e.response.status_code})"
+            try:
+                error_detail = e.response.json()
+                if "error" in error_detail:
+                    error_msg += f": {error_detail['error']}"
+            except:
+                error_msg += f": {e.response.text}"
+            raise Exception(error_msg)
+        except httpx.RequestError as e:
+            raise Exception(f"Ollama API 网络请求失败: {str(e)}")
         except Exception as e:
             raise Exception(f"Ollama API 调用失败: {str(e)}")
 

@@ -1,6 +1,7 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, ARRAY, Float
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
+from pgvector.sqlalchemy import Vector
 from app.core.database import Base
 
 
@@ -29,7 +30,7 @@ class VectorChunk(Base):
     id = Column(Integer, primary_key=True, index=True)
     document_id = Column(Integer, ForeignKey("knowledge_documents.id"), nullable=False)
     chunk_text = Column(Text, nullable=False)
-    embedding = Column(ARRAY(Float))  # pgvector 存储
+    embedding = Column(Vector(2560))  # pgvector 存储
     chunk_index = Column(Integer)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())

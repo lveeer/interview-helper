@@ -21,3 +21,6 @@ class KnowledgeDocumentResponse(BaseModel):
 class KnowledgeQuery(BaseModel):
     query: str
     top_k: int = 5
+    use_query_expansion: Optional[bool] = None  # 使用查询扩展
+    use_hybrid_search: Optional[bool] = None  # 使用混合检索
+    use_reranking: Optional[bool] = None  # 使用重排序

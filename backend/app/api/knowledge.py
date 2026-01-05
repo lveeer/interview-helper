@@ -108,15 +108,23 @@ async def query_knowledge(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """查询知识库"""
+    """查询知识库（支持查询扩展、混合检索、重排序）"""
     from app.services.rag_service import RAGService
     from app.schemas.common import ApiResponse
+
+    # 使用配置默认值或用户指定的值
+    use_query_expansion = query.use_query_expansion if query.use_query_expansion is not None else settings.ENABLE_QUERY_EXPANSION
+    use_hybrid_search = query.use_hybrid_search if query.use_hybrid_search is not None else settings.ENABLE_HYBRID_SEARCH
+    use_reranking = query.use_reranking if query.use_reranking is not None else settings.ENABLE_RERANKING
 
     results = await RAGService.search_knowledge(
         query.query,
         current_user.id,
         query.top_k,
-        db
+        use_query_expansion=use_query_expansion,
+        use_hybrid_search=use_hybrid_search,
+        use_reranking=use_reranking,
+        db=db
     )
 
     return ApiResponse(
@@ -124,6 +132,11 @@ async def query_knowledge(
         message="查询成功",
         data={
             "query": query.query,
-            "results": results
+            "results": results,
+            "config": {
+                "use_query_expansion": use_query_expansion,
+                "use_hybrid_search": use_hybrid_search,
+                "use_reranking": use_reranking
+            }
         }
     )

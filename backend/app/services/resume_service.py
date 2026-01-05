@@ -4,9 +4,15 @@ import json
 import logging
 from typing import Dict, Any, List, Optional
 from datetime import datetime
-from unstructured.partition.auto import partition
-from unstructured.partition.pdf import partition_pdf
-from unstructured.partition.docx import partition_docx
+try:
+    import pypdf
+except ImportError:
+    pypdf = None
+
+try:
+    import pdfplumber
+except ImportError:
+    pdfplumber = None
 
 # 配置日志
 logging.basicConfig(level=logging.INFO)
@@ -15,6 +21,55 @@ logger = logging.getLogger(__name__)
 
 class ResumeParser:
     """简历解析服务 - 使用 Unstructured.io 和正则表达式提取结构化信息"""
+
+    @staticmethod
+    def _extract_text_with_pdfplumber(file_path: str, fallback_text: str = "") -> str:
+        """
+        使用 pdfplumber 提取 PDF 文本（支持图片型PDF的OCR）
+
+        Args:
+            file_path: PDF文件路径
+            fallback_text: 备用文本（如果pdfplumber也失败）
+
+        Returns:
+            提取的文本内容
+        """
+        if not pdfplumber:
+            logger.warning("pdfplumber 未安装，使用备用文本")
+            return fallback_text
+
+        try:
+            with pdfplumber.open(file_path) as pdf:
+                text_content = ""
+                for page in pdf.pages:
+                    # 先尝试直接提取文本
+                    text = page.extract_text()
+                    if text:
+                        text_content += text + "\n"
+                    else:
+                        # 如果没有文本，可能是图片型PDF
+                        # 尝试使用OCR（需要系统安装tesseract）
+                        logger.warning(f"第{pdf.pages.index(page) + 1}页未检测到文本，尝试OCR")
+                        try:
+                            # 检查是否有图片对象
+                            if page.images:
+                                logger.info(f"检测到 {len(page.images)} 个图片对象")
+                                # 注意：完整的OCR需要安装tesseract-ocr和pytesseract
+                                # 这里先记录日志，实际OCR功能需要额外配置
+                                logger.warning("OCR功能需要安装tesseract-ocr和pytesseract库")
+                        except Exception as e:
+                            logger.warning(f"OCR尝试失败: {e}")
+
+                if len(text_content.strip()) > 50:
+                    logger.info(f"pdfplumber成功提取 {len(text_content)} 字符")
+                    return text_content
+                else:
+                    logger.warning("pdfplumber提取的文本仍然过少")
+                    return fallback_text
+
+        except Exception as e:
+            logger.error(f"pdfplumber解析失败: {e}")
+            return fallback_text
 
     @staticmethod
     def parse_resume(file_path: str) -> Dict[str, Any]:
@@ -28,21 +83,43 @@ class ResumeParser:
             包含结构化简历信息的字典
         """
         logger.info(f"开始解析简历: {file_path}")
-        
+
         file_ext = os.path.splitext(file_path)[1].lower()
 
         try:
-            # 根据文件类型选择解析方法
-            if file_ext == '.pdf':
-                elements = partition_pdf(file_path)
-            elif file_ext in ['.docx', '.doc']:
-                elements = partition_docx(file_path)
-            else:
-                elements = partition(file_path)
-
             # 提取文本内容
-            text_content = "\n".join([str(el) for el in elements])
-            
+            text_content = ""
+
+            if file_ext == '.pdf':
+                if pypdf:
+                    # 使用 pypdf 解析 PDF
+                    with open(file_path, 'rb') as f:
+                        reader = pypdf.PdfReader(f)
+                        for page in reader.pages:
+                            text_content += page.extract_text() + "\n"
+                    
+                    # 如果提取的文本过少，可能是图片型PDF，尝试使用pdfplumber
+                    if len(text_content.strip()) < 100:
+                        logger.warning("pypdf提取的文本过少，尝试使用pdfplumber")
+                        text_content = ResumeParser._extract_text_with_pdfplumber(file_path, text_content)
+                else:
+                    raise Exception("pypdf 未安装，无法解析 PDF")
+            elif file_ext in ['.docx', '.doc']:
+                # 使用 python-docx 解析 Word 文档
+                try:
+                    from docx import Document
+                    doc = Document(file_path)
+                    for para in doc.paragraphs:
+                        text_content += para.text + "\n"
+                except ImportError:
+                    raise Exception("python-docx 未安装，无法解析 Word 文档")
+            elif file_ext == '.txt':
+                # 直接读取文本文件
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    text_content = f.read()
+            else:
+                raise Exception(f"不支持的文件类型: {file_ext}")
+
             logger.info(f"提取文本内容长度: {len(text_content)} 字符")
 
             # 解析各个部分

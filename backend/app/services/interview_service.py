@@ -64,9 +64,37 @@ class InterviewService:
             response = await llm.generate_text(prompt, temperature=0.8)
             # 解析 JSON 响应
             questions = json.loads(response)
+            # 验证返回的问题格式
+            if not isinstance(questions, list) or len(questions) == 0:
+                raise ValueError("LLM 返回的问题格式不正确")
             return questions
+        except json.JSONDecodeError as e:
+            # JSON 解析失败，返回默认问题
+            print(f"警告: LLM 返回的 JSON 解析失败: {e}")
+            print(f"LLM 原始响应: {response[:500]}")
+            return [
+                {
+                    "id": 1,
+                    "question": "请简单介绍一下你自己",
+                    "category": "自我介绍",
+                    "difficulty": "简单"
+                },
+                {
+                    "id": 2,
+                    "question": "请详细介绍一下你最引以为豪的项目",
+                    "category": "项目经验",
+                    "difficulty": "中等"
+                },
+                {
+                    "id": 3,
+                    "question": "你在项目中遇到的最大挑战是什么？如何解决的？",
+                    "category": "问题解决",
+                    "difficulty": "中等"
+                }
+            ]
         except Exception as e:
-            # 如果解析失败，返回默认问题
+            # 其他错误，返回默认问题并记录日志
+            print(f"警告: 生成面试问题失败: {e}")
             return [
                 {
                     "id": 1,
@@ -149,9 +177,20 @@ class InterviewService:
         try:
             response = await llm.generate_text(prompt, temperature=0.7)
             result = json.loads(response)
+            # 验证返回的格式
+            if not isinstance(result, dict) or "type" not in result:
+                raise ValueError("LLM 返回的格式不正确")
             return result
+        except json.JSONDecodeError as e:
+            print(f"警告: 追问生成 JSON 解析失败: {e}")
+            print(f"LLM 原始响应: {response[:500]}")
+            return {
+                "type": "next",
+                "question": "感谢你的回答。让我们继续下一个问题。",
+                "reason": "继续面试流程"
+            }
         except Exception as e:
-            # 默认返回下一个问题的提示
+            print(f"警告: 生成追问失败: {e}")
             return {
                 "type": "next",
                 "question": "感谢你的回答。让我们继续下一个问题。",
@@ -212,9 +251,21 @@ class InterviewService:
         try:
             response = await llm.generate_text(prompt, temperature=0.5)
             result = json.loads(response)
+            # 验证返回的格式
+            if not isinstance(result, dict) or "score" not in result:
+                raise ValueError("LLM 返回的评估格式不正确")
             return result
+        except json.JSONDecodeError as e:
+            print(f"警告: 答案评估 JSON 解析失败: {e}")
+            print(f"LLM 原始响应: {response[:500]}")
+            return {
+                "score": 70,
+                "feedback": "回答基本符合要求",
+                "strengths": ["回答了问题"],
+                "improvements": ["可以更详细", "可以增加实例"]
+            }
         except Exception as e:
-            # 默认评估
+            print(f"警告: 评估答案失败: {e}")
             return {
                 "score": 70,
                 "feedback": "回答基本符合要求",
