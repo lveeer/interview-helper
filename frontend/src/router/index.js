@@ -62,6 +62,12 @@ const routes = [
         name: 'Report',
         component: () => import('@/views/Report.vue'),
         meta: { title: '评估报告' }
+      },
+      {
+        path: '/interview-record/:id',
+        name: 'InterviewRecord',
+        component: () => import('@/views/InterviewRecord.vue'),
+        meta: { title: '面试对话记录' }
       }
     ]
   }

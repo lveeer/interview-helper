@@ -202,6 +202,93 @@ async def get_interviews(
     )
 
 
+@router.get("/{interview_id}/record")
+async def get_interview_record(
+    interview_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    获取面试的完整对话记录
+
+    返回面试的所有问题和回答记录，包括：
+    - questions: 面试问题列表
+    - conversation: 完整的对话流（包含问题、回答、追问）
+
+    **响应字段说明：**
+    - id: 面试ID
+    - user_id: 用户ID
+    - resume_id: 简历ID
+    - job_description: 职位描述（JD）
+    - status: 面试状态（pending/in_progress/completed）
+    - total_score: 总分
+    - questions: 问题列表，每个问题包含：
+      - id: 问题ID
+      - question: 问题内容
+      - category: 问题分类
+      - difficulty: 难度
+    - conversation: 对话记录数组，每条消息包含：
+      - role: 角色（interviewer/candidate）
+      - content: 消息内容
+      - question_id: 关联的问题ID（可选）
+      - category: 问题分类（可选）
+      - difficulty: 难度（可选）
+      - type: 问题类型（可选，"followup"表示追问）
+      - reason: 追问原因（可选）
+      - timestamp: 时间戳（可选）
+    - created_at: 创建时间
+    """
+    from app.schemas.common import ApiResponse
+    from app.schemas.interview import InterviewRecordResponse
+
+    interview = db.query(Interview).filter(
+        Interview.id == interview_id,
+        Interview.user_id == current_user.id
+    ).first()
+    if not interview:
+        raise HTTPException(
+            status_code=404,
+            detail="面试不存在"
+        )
+
+    # 解析数据
+    questions = json.loads(interview.questions) if interview.questions else []
+    conversation = json.loads(interview.conversation) if interview.conversation else []
+
+    # 构建完整的对话记录（包含问题和回答）
+    full_conversation = []
+    for msg in conversation:
+        full_conversation.append({
+            "role": msg.get("role"),
+            "content": msg.get("content"),
+            "question_id": msg.get("question_id"),
+            "category": msg.get("category"),
+            "difficulty": msg.get("difficulty"),
+            "type": msg.get("type"),  # "followup" 或 None
+            "reason": msg.get("reason"),  # 追问的原因
+            "timestamp": msg.get("timestamp")
+        })
+
+    # 构建响应数据
+    response_data = {
+        "id": interview.id,
+        "user_id": interview.user_id,
+        "resume_id": interview.resume_id,
+        "job_description": interview.job_description,
+        "status": interview.status,
+        "total_score": interview.total_score,
+        "questions": questions,
+        "conversation": full_conversation,
+        "created_at": interview.created_at
+    }
+
+    return ApiResponse(
+        code=200,
+        message="获取成功",
+        data=response_data
+    )
+
+
 @router.websocket("/ws/{interview_id}")
 async def interview_websocket(
     websocket: WebSocket,
@@ -246,8 +333,23 @@ async def interview_websocket(
         interview.status = InterviewStatus.IN_PROGRESS
         db.commit()
 
-        # 发送第一个问题
+        # 发送第一个问题并记录
+        from datetime import datetime
         questions = json.loads(interview.questions)
+        conversation = json.loads(interview.conversation) if interview.conversation else []
+
+        # 记录第一个问题
+        conversation.append({
+            "role": "interviewer",
+            "content": questions[0]["question"],
+            "question_id": questions[0]["id"],
+            "category": questions[0]["category"],
+            "difficulty": questions[0]["difficulty"],
+            "timestamp": datetime.now().isoformat()
+        })
+        interview.conversation = json.dumps(conversation)
+        db.commit()
+
         await websocket.send_json({
             "type": "question",
             "data": questions[0]
@@ -259,12 +361,13 @@ async def interview_websocket(
             data = await websocket.receive_json()
 
             if data.get("type") == "answer":
-                # 保存对话记录
+                # 保存求职者回答
                 conversation = json.loads(interview.conversation)
                 conversation.append({
                     "role": "candidate",
                     "content": data.get("answer"),
-                    "question_id": questions[current_question_index]["id"]
+                    "question_id": questions[current_question_index]["id"],
+                    "timestamp": datetime.now().isoformat()
                 })
                 interview.conversation = json.dumps(conversation)
                 db.commit()
@@ -279,7 +382,19 @@ async def interview_websocket(
                 )
 
                 if followup_result.get("type") == "followup":
-                    # 发送追问
+                    # 记录并发送追问
+                    conversation = json.loads(interview.conversation)
+                    conversation.append({
+                        "role": "interviewer",
+                        "content": followup_result["question"],
+                        "type": "followup",
+                        "reason": followup_result.get("reason", ""),
+                        "question_id": questions[current_question_index]["id"],
+                        "timestamp": datetime.now().isoformat()
+                    })
+                    interview.conversation = json.dumps(conversation)
+                    db.commit()
+
                     await websocket.send_json({
                         "type": "followup",
                         "data": {
@@ -291,6 +406,19 @@ async def interview_websocket(
                     # 发送下一个问题
                     current_question_index += 1
                     if current_question_index < len(questions):
+                        # 记录下一个问题
+                        conversation = json.loads(interview.conversation)
+                        conversation.append({
+                            "role": "interviewer",
+                            "content": questions[current_question_index]["question"],
+                            "question_id": questions[current_question_index]["id"],
+                            "category": questions[current_question_index]["category"],
+                            "difficulty": questions[current_question_index]["difficulty"],
+                            "timestamp": datetime.now().isoformat()
+                        })
+                        interview.conversation = json.dumps(conversation)
+                        db.commit()
+
                         await websocket.send_json({
                             "type": "question",
                             "data": questions[current_question_index]

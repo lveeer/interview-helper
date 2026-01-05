@@ -104,9 +104,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { getResumeList } from '@/api/resume'
-import { getInterviewList } from '@/api/interview'
-import { getKnowledgeList } from '@/api/knowledge'
+import { getDashboardStatistics } from '@/api/statistics'
 
 const router = useRouter()
 
@@ -117,27 +115,13 @@ const avgScore = ref(0)
 
 const loadData = async () => {
   try {
-    const [resumeRes, interviewRes, knowledgeRes] = await Promise.all([
-      getResumeList(),
-      getInterviewList(),
-      getKnowledgeList()
-    ])
+    const res = await getDashboardStatistics()
 
-    if (resumeRes.code === 200) {
-      resumeCount.value = resumeRes.data.total || 0
-    }
-
-    if (interviewRes.code === 200) {
-      interviewCount.value = interviewRes.data.total || 0
-      const interviews = interviewRes.data.data || []
-      if (interviews.length > 0) {
-        const total = interviews.reduce((sum, item) => sum + (item.total_score || 0), 0)
-        avgScore.value = Math.round(total / interviews.length)
-      }
-    }
-
-    if (knowledgeRes.code === 200) {
-      knowledgeCount.value = knowledgeRes.data.total || 0
+    if (res.code === 200) {
+      resumeCount.value = res.data.resume_count || 0
+      interviewCount.value = res.data.interview_count || 0
+      knowledgeCount.value = res.data.knowledge_count || 0
+      avgScore.value = res.data.avg_score || 0
     }
   } catch (error) {
     console.error('加载数据失败:', error)

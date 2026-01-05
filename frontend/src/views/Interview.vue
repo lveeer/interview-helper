@@ -27,7 +27,7 @@
             {{ formatDate(row.created_at) }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="200" fixed="right">
+        <el-table-column label="操作" width="280" fixed="right">
           <template #default="{ row }">
             <el-button
               v-if="row.status === 'pending'"
@@ -44,6 +44,22 @@
               @click="viewReport(row)"
             >
               查看报告
+            </el-button>
+            <el-button
+              v-if="row.status === 'completed'"
+              type="info"
+              size="small"
+              @click="viewRecord(row)"
+            >
+              查看对话
+            </el-button>
+            <el-button
+              v-else-if="row.status === 'analyzing'"
+              type="info"
+              size="small"
+              disabled
+            >
+              报告生成中...
             </el-button>
             <el-button
               v-if="row.status === 'in_progress'"
@@ -119,7 +135,7 @@ const loadInterviewList = async () => {
   try {
     const res = await getInterviewList()
     if (res.code === 200) {
-      interviewList.value = res.data.data || []
+      interviewList.value = res.data || []
     }
   } catch (error) {
     console.error('加载面试列表失败:', error)
@@ -132,7 +148,7 @@ const loadResumeList = async () => {
   try {
     const res = await getResumeList()
     if (res.code === 200) {
-      resumeList.value = res.data.data || []
+      resumeList.value = res.data || []
     }
   } catch (error) {
     console.error('加载简历列表失败:', error)
@@ -181,10 +197,15 @@ const viewReport = (interview) => {
   router.push(`/report/${interview.id}`)
 }
 
+const viewRecord = (interview) => {
+  router.push(`/interview-record/${interview.id}`)
+}
+
 const getStatusText = (status) => {
   const statusMap = {
     pending: '待开始',
     in_progress: '进行中',
+    analyzing: '分析中',
     completed: '已完成'
   }
   return statusMap[status] || status
@@ -194,6 +215,7 @@ const getStatusType = (status) => {
   const typeMap = {
     pending: 'info',
     in_progress: 'warning',
+    analyzing: 'info',
     completed: 'success'
   }
   return typeMap[status] || ''

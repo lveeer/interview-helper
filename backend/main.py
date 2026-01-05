@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from config import settings
 import os
 
-from app.api import auth, resume, job, interview, knowledge, evaluation
+from app.api import auth, resume, job, interview, knowledge, evaluation, statistics
 
 
 @asynccontextmanager
@@ -42,6 +42,7 @@ app.include_router(job.router, prefix="/api/job", tags=["岗位匹配"])
 app.include_router(interview.router, prefix="/api/interview", tags=["模拟面试"])
 app.include_router(knowledge.router, prefix="/api/knowledge", tags=["知识库"])
 app.include_router(evaluation.router, prefix="/api/evaluation", tags=["评估反馈"])
+app.include_router(statistics.router, prefix="/api/statistics", tags=["统计数据"])
 
 
 @app.get("/")

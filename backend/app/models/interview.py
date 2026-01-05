@@ -27,6 +27,11 @@ class Interview(Base):
     # 面试对话记录（JSON 格式）
     conversation = Column(Text)
 
+    # 评估报告（JSON 格式）
+    evaluation_report = Column(Text, nullable=True)
+    # 评估报告生成时间
+    evaluation_generated_at = Column(DateTime(timezone=True), nullable=True)
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 

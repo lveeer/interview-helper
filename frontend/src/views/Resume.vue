@@ -75,14 +75,14 @@
           {{ currentResume.file_type.toUpperCase() }}
         </el-descriptions-item>
         <el-descriptions-item v-if="currentResume.personal_info" label="姓名">
-          {{ JSON.parse(currentResume.personal_info).name || '-' }}
+          {{ currentResume.personal_info.name || '-' }}
         </el-descriptions-item>
         <el-descriptions-item v-if="currentResume.personal_info" label="邮箱">
-          {{ JSON.parse(currentResume.personal_info).email || '-' }}
+          {{ currentResume.personal_info.email || '-' }}
         </el-descriptions-item>
         <el-descriptions-item v-if="currentResume.skills" label="技能" :span="2">
           <el-tag
-            v-for="skill in JSON.parse(currentResume.skills)"
+            v-for="skill in currentResume.skills"
             :key="skill"
             style="margin-right: 5px; margin-bottom: 5px;"
           >
@@ -97,7 +97,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getResumeList, uploadResume, deleteResume as deleteResumeApi } from '@/api/resume'
+import { getResumeList, uploadResume, deleteResume as deleteResumeApi, getResumeDetail } from '@/api/resume'
 
 const loading = ref(false)
 const uploading = ref(false)
@@ -113,7 +113,7 @@ const loadResumeList = async () => {
   try {
     const res = await getResumeList()
     if (res.code === 200) {
-      resumeList.value = res.data.data || []
+      resumeList.value = res.data || []
     }
   } catch (error) {
     console.error('加载简历列表失败:', error)
@@ -149,9 +149,19 @@ const handleUpload = async () => {
   }
 }
 
-const viewResume = (resume) => {
-  currentResume.value = resume
-  showDetailDialog.value = true
+const viewResume = async (resume) => {
+  try {
+    const res = await getResumeDetail(resume.id)
+    if (res.code === 200) {
+      currentResume.value = res.data
+      showDetailDialog.value = true
+    } else {
+      ElMessage.error('获取简历详情失败')
+    }
+  } catch (error) {
+    console.error('获取简历详情失败:', error)
+    ElMessage.error('获取简历详情失败')
+  }
 }
 
 const deleteResume = async (id) => {

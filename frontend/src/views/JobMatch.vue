@@ -154,7 +154,7 @@ const loadResumeList = async () => {
   try {
     const res = await getResumeList()
     if (res.code === 200) {
-      resumeList.value = res.data.data || []
+      resumeList.value = res.data || []
     }
   } catch (error) {
     console.error('加载简历列表失败:', error)

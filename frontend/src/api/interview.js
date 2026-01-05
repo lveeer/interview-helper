@@ -5,7 +5,8 @@ export const createInterview = (data) => {
   return request({
     url: '/interview/create',
     method: 'post',
-    data
+    data,
+    timeout: 30000 // 30秒超时
   })
 }
 
@@ -21,6 +22,14 @@ export const getInterviewList = () => {
 export const getInterviewDetail = (id) => {
   return request({
     url: `/interview/${id}`,
+    method: 'get'
+  })
+}
+
+// 获取面试对话记录
+export const getInterviewRecord = (id) => {
+  return request({
+    url: `/interview/${id}/record`,
     method: 'get'
   })
 }

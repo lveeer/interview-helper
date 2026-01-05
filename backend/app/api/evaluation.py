@@ -35,6 +35,19 @@ async def get_interview_report(
             detail="面试尚未完成"
         )
 
+    # 检查是否已有缓存的评估报告
+    if interview.evaluation_report:
+        report_data = json.loads(interview.evaluation_report)
+        return ApiResponse(
+            code=200,
+            message="获取成功",
+            data=InterviewReport(
+                interview_id=interview_id,
+                **report_data,
+                created_at=interview.evaluation_generated_at or interview.created_at
+            )
+        )
+
     # 获取对话记录
     conversation = json.loads(interview.conversation) if interview.conversation else []
 
@@ -48,12 +61,18 @@ async def get_interview_report(
         conversation
     )
 
+    # 保存评估报告到数据库
+    from datetime import datetime
+    interview.evaluation_report = json.dumps(report_data, ensure_ascii=False)
+    interview.evaluation_generated_at = datetime.now()
+    db.commit()
+
     return ApiResponse(
         code=200,
         message="获取成功",
         data=InterviewReport(
             interview_id=interview_id,
             **report_data,
-            created_at=interview.created_at
+            created_at=interview.evaluation_generated_at
         )
     )

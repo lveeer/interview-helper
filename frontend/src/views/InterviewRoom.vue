@@ -107,10 +107,10 @@ const connectWebSocket = () => {
       scrollToBottom()
     } else if (data.type === 'end') {
       isTyping.value = false
-      ElMessage.success('面试已完成')
+      ElMessage.success('面试已完成，报告生成中，请稍后在面试列表查看')
       setTimeout(() => {
-        router.push(`/report/${interviewId}`)
-      }, 1500)
+        router.push('/interview')
+      }, 2000)
     }
   }
 
