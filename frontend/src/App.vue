@@ -1,27 +1,33 @@
 <template>
-  <router-view />
+  <router-view v-slot="{ Component }">
+    <transition name="page-fade" mode="out-in">
+      <component :is="Component" />
+    </transition>
+  </router-view>
 </template>
 
 <script setup>
 </script>
 
 <style>
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+/* 全局页面过渡动画 */
+.page-fade-enter-active,
+.page-fade-leave-active {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-#app {
-  font-family: 'Helvetica Neue', Helvetica, 'PingFang SC', 'Hiragino Sans GB',
-    'Microsoft YaHei', '微软雅黑', Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  height: 100vh;
+.page-fade-enter-from {
+  opacity: 0;
+  transform: translateY(20px);
 }
 
-body {
-  margin: 0;
-  padding: 0;
+.page-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-20px);
+}
+
+.page-fade-leave-active {
+  position: absolute;
+  width: 100%;
 }
 </style>
