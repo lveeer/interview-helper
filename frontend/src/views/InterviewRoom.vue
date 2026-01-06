@@ -99,6 +99,7 @@ const userAnswer = ref('')
 const isTyping = ref(false)
 const chatContainer = ref(null)
 let websocket = null
+const isEnding = ref(false) // 标记是否正在结束面试
 
 onMounted(() => {
   connectWebSocket()
@@ -149,6 +150,13 @@ const connectWebSocket = () => {
 
   websocket.onclose = () => {
     console.log('WebSocket 连接关闭')
+    // 如果是用户主动结束面试导致的连接关闭，显示成功消息并跳转
+    if (isEnding.value) {
+      ElMessage.success('面试已完成，报告生成中，请稍后在面试列表查看')
+      setTimeout(() => {
+        router.push('/interview')
+      }, 2000)
+    }
   }
 }
 
@@ -194,16 +202,23 @@ const handleEnd = async () => {
       endButton.textContent = '结束中...'
     }
 
+    ElMessage.info('正在结束面试...')
+
+    // 尝试发送结束消息
     if (websocket && websocket.readyState === WebSocket.OPEN) {
-      ElMessage.info('正在结束面试...')
       websocket.send(JSON.stringify({ type: 'end' }))
-    } else {
-      ElMessage.error('连接已断开，请刷新页面重试')
-      if (endButton) {
-        endButton.disabled = false
-        endButton.textContent = '结束'
-      }
     }
+
+    // 直接关闭 WebSocket 连接
+    if (websocket) {
+      websocket.close()
+    }
+
+    // 显示成功消息并跳转
+    ElMessage.success('面试已完成，报告生成中，请稍后在面试列表查看')
+    setTimeout(() => {
+      router.push('/interview')
+    }, 2000)
   } catch {
     // 用户取消
   }

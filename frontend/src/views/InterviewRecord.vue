@@ -213,8 +213,6 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 20px;
-  max-width: 900px;
-  margin: 0 auto;
 }
 
 .conversation-item {

@@ -13,7 +13,11 @@
 
       <el-table :data="interviewList" v-loading="loading">
         <el-table-column prop="id" label="ID" width="80" />
-        <el-table-column prop="job_description" label="岗位描述" min-width="200" show-overflow-tooltip />
+        <el-table-column prop="job_description" label="岗位描述" min-width="200">
+          <template #default="{ row }">
+            {{ truncateText(row.job_description, 150) }}
+          </template>
+        </el-table-column>
         <el-table-column label="状态" width="120">
           <template #default="{ row }">
             <el-tag :type="getStatusType(row.status)">
@@ -225,6 +229,12 @@ const formatDate = (dateStr) => {
   if (!dateStr) return '-'
   const date = new Date(dateStr)
   return date.toLocaleString('zh-CN')
+}
+
+const truncateText = (text, maxLength) => {
+  if (!text) return '-'
+  if (text.length <= maxLength) return text
+  return text.substring(0, maxLength) + '...'
 }
 
 onMounted(() => {
