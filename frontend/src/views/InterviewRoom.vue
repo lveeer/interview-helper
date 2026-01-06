@@ -1,16 +1,24 @@
 <template>
   <div class="interview-room">
-    <el-card>
-      <template #header>
-        <div class="card-header">
-          <span>AI 模拟面试</span>
-          <el-button type="danger" @click="handleEnd">
-            <el-icon><Close /></el-icon>
-            结束面试
-          </el-button>
+    <div class="interview-container">
+      <!-- macOS 风格窗口头部 -->
+      <div class="interview-header">
+        <div class="header-left">
+          <div class="window-controls">
+            <div class="window-control close"></div>
+            <div class="window-control minimize"></div>
+            <div class="window-control maximize"></div>
+          </div>
+          <div class="title-text">
+            <h1>AI 模拟面试</h1>
+          </div>
         </div>
-      </template>
+        <button class="end-button" @click="handleEnd">
+          结束
+        </button>
+      </div>
 
+      <!-- 聊天区域 -->
       <div class="chat-container" ref="chatContainer">
         <div
           v-for="(message, index) in messages"
@@ -18,8 +26,10 @@
           :class="['message', message.role]"
         >
           <div class="message-avatar">
-            <el-icon v-if="message.role === 'interviewer'"><User /></el-icon>
-            <el-icon v-else><UserFilled /></el-icon>
+            <div class="avatar-wrapper" :class="message.role">
+              <el-icon v-if="message.role === 'interviewer'"><User /></el-icon>
+              <el-icon v-else><UserFilled /></el-icon>
+            </div>
           </div>
           <div class="message-content">
             <div class="message-role">
@@ -29,9 +39,12 @@
           </div>
         </div>
 
+        <!-- 打字指示器 -->
         <div v-if="isTyping" class="message interviewer">
           <div class="message-avatar">
-            <el-icon><User /></el-icon>
+            <div class="avatar-wrapper interviewer">
+              <el-icon><User /></el-icon>
+            </div>
           </div>
           <div class="message-content">
             <div class="typing-indicator">
@@ -43,22 +56,31 @@
         </div>
       </div>
 
+      <!-- 输入区域 -->
       <div class="input-area">
-        <el-input
-          v-model="userAnswer"
-          type="textarea"
-          :rows="3"
-          placeholder="请输入你的回答..."
-          :disabled="isTyping"
-          @keyup.ctrl.enter="sendAnswer"
-        />
-        <div class="input-actions">
-          <el-button type="primary" :loading="isTyping" @click="sendAnswer">
-            发送 (Ctrl+Enter)
-          </el-button>
+        <div class="input-wrapper">
+          <textarea
+            v-model="userAnswer"
+            class="input-field"
+            :rows="3"
+            placeholder="输入你的回答..."
+            :disabled="isTyping"
+            @keyup.ctrl.enter="sendAnswer"
+          ></textarea>
+          <div class="input-actions">
+            <button
+              class="send-button"
+              :class="{ loading: isTyping }"
+              :disabled="isTyping || !userAnswer.trim()"
+              @click="sendAnswer"
+            >
+              <el-icon v-if="!isTyping"><Promotion /></el-icon>
+              <span>{{ isTyping ? '思考中...' : '发送' }}</span>
+            </button>
+          </div>
         </div>
       </div>
-    </el-card>
+    </div>
   </div>
 </template>
 
@@ -66,6 +88,7 @@
 import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { User, UserFilled, Promotion } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -96,7 +119,9 @@ const connectWebSocket = () => {
   }
 
   websocket.onmessage = (event) => {
+    console.log('收到 WebSocket 消息:', event.data)
     const data = JSON.parse(event.data)
+    console.log('解析后的数据:', data)
 
     if (data.type === 'question' || data.type === 'followup') {
       isTyping.value = false
@@ -106,11 +131,14 @@ const connectWebSocket = () => {
       })
       scrollToBottom()
     } else if (data.type === 'end') {
+      console.log('收到结束消息，准备跳转')
       isTyping.value = false
       ElMessage.success('面试已完成，报告生成中，请稍后在面试列表查看')
       setTimeout(() => {
         router.push('/interview')
       }, 2000)
+    } else {
+      console.log('未处理的消息类型:', data.type)
     }
   }
 
@@ -159,8 +187,22 @@ const handleEnd = async () => {
       type: 'warning'
     })
 
+    // 禁用按钮防止重复点击
+    const endButton = document.querySelector('.end-button')
+    if (endButton) {
+      endButton.disabled = true
+      endButton.textContent = '结束中...'
+    }
+
     if (websocket && websocket.readyState === WebSocket.OPEN) {
+      ElMessage.info('正在结束面试...')
       websocket.send(JSON.stringify({ type: 'end' }))
+    } else {
+      ElMessage.error('连接已断开，请刷新页面重试')
+      if (endButton) {
+        endButton.disabled = false
+        endButton.textContent = '结束'
+      }
     }
   } catch {
     // 用户取消
@@ -177,81 +219,139 @@ const scrollToBottom = () => {
 </script>
 
 <style scoped>
+/* ===== 主容器 - macOS 风格 ===== */
 .interview-room {
   height: 100%;
   display: flex;
   flex-direction: column;
+  background: #f5f5f7;
+  padding: 20px;
+  box-sizing: border-box;
 }
 
-:deep(.el-card) {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  border: none;
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-md);
-}
-
-:deep(.el-card__header) {
-  padding: var(--spacing-lg) var(--spacing-xl);
-  border-bottom: 1px solid var(--border-color-light);
-  background: linear-gradient(180deg, var(--bg-color-light) 0%, transparent 100%);
-}
-
-:deep(.el-card__body) {
+.interview-container {
   flex: 1;
   display: flex;
   flex-direction: column;
-  padding: 0;
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
   overflow: hidden;
+  border: 1px solid rgba(0, 0, 0, 0.08);
 }
 
-/* 卡片头部 */
-.card-header {
+/* ===== 顶部工具栏 - macOS 风格 ===== */
+.interview-header {
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  align-items: center;
 }
 
-.card-header span {
-  font-size: var(--font-size-lg);
-  font-weight: var(--font-weight-semibold);
-  color: var(--text-primary);
+.header-left {
   display: flex;
   align-items: center;
-  gap: var(--spacing-sm);
+  gap: 12px;
 }
 
-.card-header span::before {
-  content: '💬';
-  font-size: 20px;
+.window-controls {
+  display: flex;
+  gap: 8px;
 }
 
-/* 聊天容器 */
+.window-control {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  transition: opacity 0.15s ease;
+}
+
+.window-control.close {
+  background: #FF5F57;
+}
+
+.window-control.minimize {
+  background: #FEBC2E;
+}
+
+.window-control.maximize {
+  background: #28C840;
+}
+
+.title-text h1 {
+  font-size: 13px;
+  font-weight: 500;
+  color: #1d1d1f;
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.end-button {
+  padding: 6px 12px;
+  background: #FF3B30;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.end-button:hover {
+  background: #FF453A;
+}
+
+.end-button:active {
+  opacity: 0.8;
+}
+
+/* ===== 聊天容器 ===== */
 .chat-container {
   flex: 1;
   overflow-y: auto;
-  padding: var(--spacing-lg) var(--spacing-xl);
-  background: linear-gradient(180deg, var(--bg-color) 0%, var(--bg-color-light) 100%);
+  padding: 20px;
+  background: #ffffff;
   scroll-behavior: smooth;
 }
 
-/* 消息样式 */
+.chat-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.chat-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.chat-container::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+}
+
+.chat-container::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+/* ===== 消息样式 ===== */
 .message {
   display: flex;
-  gap: var(--spacing-md);
-  margin-bottom: var(--spacing-xl);
-  animation: messageSlideIn 0.3s ease-out;
+  gap: 12px;
+  margin-bottom: 24px;
+  animation: messageFadeIn 0.2s ease-out;
 }
 
 .message:last-child {
   margin-bottom: 0;
 }
 
-@keyframes messageSlideIn {
+@keyframes messageFadeIn {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(8px);
   }
   to {
     opacity: 1;
@@ -267,34 +367,32 @@ const scrollToBottom = () => {
   flex-direction: row-reverse;
 }
 
-/* 头像样式 */
+/* ===== 头像样式 ===== */
 .message-avatar {
-  width: 44px;
-  height: 44px;
-  border-radius: var(--radius-round);
+  flex-shrink: 0;
+}
+
+.avatar-wrapper {
+  width: 40px;
+  height: 40px;
+  border-radius: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
-  flex-shrink: 0;
+  color: white;
   font-size: 20px;
-  box-shadow: var(--shadow-sm);
-  transition: transform var(--transition-fast);
+  transition: all 0.15s ease;
 }
 
-.message:hover .message-avatar {
-  transform: scale(1.1);
+.avatar-wrapper.interviewer {
+  background: #007AFF;
 }
 
-.message.interviewer .message-avatar {
-  background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+.avatar-wrapper.candidate {
+  background: #34C759;
 }
 
-.message.candidate .message-avatar {
-  background: linear-gradient(135deg, var(--success-color) 0%, #5daf34 100%);
-}
-
-/* 消息内容 */
+/* ===== 消息内容 ===== */
 .message-content {
   max-width: 70%;
   display: flex;
@@ -302,11 +400,11 @@ const scrollToBottom = () => {
 }
 
 .message-role {
-  font-size: var(--font-size-xs);
-  color: var(--text-secondary);
-  margin-bottom: var(--spacing-xs);
-  font-weight: var(--font-weight-medium);
-  padding: 0 var(--spacing-xs);
+  font-size: 12px;
+  color: #86868b;
+  margin-bottom: 4px;
+  font-weight: 500;
+  padding: 0 4px;
 }
 
 .message.interviewer .message-role {
@@ -317,51 +415,44 @@ const scrollToBottom = () => {
   text-align: right;
 }
 
-/* 消息气泡 */
+/* ===== 消息气泡 ===== */
 .message-text {
-  background: var(--card-bg);
-  padding: var(--spacing-md) var(--spacing-lg);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
-  line-height: 1.6;
-  color: var(--text-primary);
-  font-size: var(--font-size-base);
-  position: relative;
-  transition: all var(--transition-fast);
-}
-
-.message-text:hover {
-  box-shadow: var(--shadow-md);
+  background: #f5f5f7;
+  padding: 12px 16px;
+  border-radius: 18px;
+  line-height: 1.5;
+  color: #1d1d1f;
+  font-size: 15px;
+  font-weight: 400;
+  letter-spacing: -0.01em;
 }
 
 .message.interviewer .message-text {
-  border-top-left-radius: var(--radius-xs);
-  background: linear-gradient(135deg, #ffffff 0%, #f5f7fa 100%);
+  border-top-left-radius: 4px;
 }
 
 .message.candidate .message-text {
-  border-top-right-radius: var(--radius-xs);
-  background: linear-gradient(135deg, var(--primary-light) 0%, var(--primary-color) 100%);
-  color: #ffffff;
+  background: #007AFF;
+  color: white;
+  border-top-right-radius: 4px;
 }
 
-/* 打字指示器 */
+/* ===== 打字指示器 ===== */
 .typing-indicator {
   display: flex;
-  gap: var(--spacing-sm);
-  padding: var(--spacing-md) var(--spacing-lg);
-  background: linear-gradient(135deg, #ffffff 0%, #f5f7fa 100%);
-  border-radius: var(--radius-lg);
-  border-top-left-radius: var(--radius-xs);
-  box-shadow: var(--shadow-sm);
+  gap: 4px;
+  padding: 12px 16px;
+  background: #f5f5f7;
+  border-radius: 18px;
+  border-top-left-radius: 4px;
   width: fit-content;
 }
 
 .typing-indicator span {
   width: 8px;
   height: 8px;
-  border-radius: var(--radius-round);
-  background: var(--primary-color);
+  border-radius: 50%;
+  background: #86868b;
   animation: typing 1.4s infinite ease-in-out;
 }
 
@@ -379,133 +470,127 @@ const scrollToBottom = () => {
     opacity: 0.4;
   }
   30% {
-    transform: translateY(-10px);
+    transform: translateY(-4px);
     opacity: 1;
   }
 }
 
-/* 输入区域 */
+/* ===== 输入区域 ===== */
 .input-area {
-  border-top: 1px solid var(--border-color-light);
-  padding: var(--spacing-lg) var(--spacing-xl);
-  background: var(--bg-color-light);
+  padding: 16px;
+  background: #ffffff;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
 }
 
-:deep(.el-textarea__inner) {
-  border-radius: var(--radius-md);
-  border: 2px solid var(--border-color-light);
-  padding: var(--spacing-md);
-  font-size: var(--font-size-base);
-  line-height: 1.6;
+.input-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.input-field {
+  width: 100%;
+  padding: 12px 16px;
+  font-size: 15px;
+  line-height: 1.5;
+  color: #1d1d1f;
+  background: #f5f5f7;
+  border: 1px solid transparent;
+  border-radius: 10px;
   resize: none;
-  transition: all var(--transition-fast);
-  background: var(--card-bg);
+  transition: all 0.15s ease;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', sans-serif;
+  outline: none;
 }
 
-:deep(.el-textarea__inner:hover) {
-  border-color: var(--primary-color-light);
+.input-field::placeholder {
+  color: #86868b;
 }
 
-:deep(.el-textarea__inner:focus) {
-  border-color: var(--primary-color);
-  box-shadow: 0 0 0 3px rgba(64, 158, 255, 0.1);
+.input-field:hover {
+  background: #ebebeb;
 }
 
-:deep(.el-textarea__inner::placeholder) {
-  color: var(--text-placeholder);
+.input-field:focus {
+  background: #ffffff;
+  border-color: #007AFF;
+  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
 }
 
-/* 输入操作按钮 */
+.input-field:disabled {
+  background: #f5f5f7;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* ===== 输入操作按钮 ===== */
 .input-actions {
   display: flex;
   justify-content: flex-end;
+}
+
+.send-button {
+  display: flex;
   align-items: center;
-  margin-top: var(--spacing-md);
-  gap: var(--spacing-md);
-}
-
-.input-actions .el-button {
-  height: 40px;
-  padding: 0 var(--spacing-lg);
-  border-radius: var(--radius-md);
-  font-weight: var(--font-weight-semibold);
+  gap: 6px;
+  padding: 8px 16px;
+  background: #007AFF;
+  color: white;
   border: none;
-  background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
-  box-shadow: 0 4px 12px rgba(64, 158, 255, 0.3);
-  transition: all var(--transition-base);
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  min-width: 80px;
+  justify-content: center;
 }
 
-.input-actions .el-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(64, 158, 255, 0.4);
+.send-button:hover:not(:disabled) {
+  background: #0056CC;
 }
 
-.input-actions .el-button:active {
-  transform: translateY(0);
-}
-
-.input-actions .el-button.is-loading {
+.send-button:active:not(:disabled) {
   opacity: 0.8;
 }
 
-/* 结束按钮 */
-.card-header .el-button {
-  height: 36px;
-  padding: 0 var(--spacing-md);
-  border-radius: var(--radius-md);
-  font-weight: var(--font-weight-medium);
-  border: none;
-  background: linear-gradient(135deg, var(--danger-color) 0%, #d95e5e 100%);
-  box-shadow: 0 4px 12px rgba(245, 108, 108, 0.3);
-  transition: all var(--transition-base);
+.send-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: #007AFF;
 }
 
-.card-header .el-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(245, 108, 108, 0.4);
+.send-button.loading {
+  background: #86868b;
+  cursor: wait;
 }
 
-/* 滚动条样式 */
-.chat-container::-webkit-scrollbar {
-  width: 6px;
+.send-button .el-icon {
+  font-size: 14px;
 }
 
-.chat-container::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.chat-container::-webkit-scrollbar-thumb {
-  background: var(--border-color);
-  border-radius: var(--radius-round);
-  transition: background var(--transition-fast);
-}
-
-.chat-container::-webkit-scrollbar-thumb:hover {
-  background: var(--text-secondary);
-}
-
-/* 响应式设计 */
+/* ===== 响应式设计 ===== */
 @media (max-width: 768px) {
-  :deep(.el-card__header) {
-    padding: var(--spacing-md);
+  .interview-room {
+    padding: 12px;
   }
 
-  .card-header span {
-    font-size: var(--font-size-base);
+  .interview-header {
+    padding: 10px 12px;
   }
 
   .chat-container {
-    padding: var(--spacing-md);
+    padding: 16px;
   }
 
   .message {
-    margin-bottom: var(--spacing-lg);
+    margin-bottom: 20px;
   }
 
-  .message-avatar {
+  .avatar-wrapper {
     width: 36px;
     height: 36px;
-    font-size: 16px;
+    font-size: 18px;
   }
 
   .message-content {
@@ -513,29 +598,100 @@ const scrollToBottom = () => {
   }
 
   .message-text {
-    padding: var(--spacing-sm) var(--spacing-md);
-    font-size: var(--font-size-sm);
+    padding: 10px 14px;
+    font-size: 14px;
   }
 
   .input-area {
-    padding: var(--spacing-md);
+    padding: 12px;
   }
 
-  :deep(.el-textarea__inner) {
-    font-size: var(--font-size-sm);
+  .input-field {
+    font-size: 14px;
+    padding: 10px 14px;
   }
 
-  .input-actions .el-button {
-    height: 36px;
-    padding: 0 var(--spacing-md);
-    font-size: var(--font-size-sm);
+  .send-button {
+    width: 100%;
+    padding: 10px 16px;
   }
 }
 
-/* 消息进入动画延迟 */
-.message:nth-child(1) { animation-delay: 0.05s; }
-.message:nth-child(2) { animation-delay: 0.1s; }
-.message:nth-child(3) { animation-delay: 0.15s; }
-.message:nth-child(4) { animation-delay: 0.2s; }
-.message:nth-child(5) { animation-delay: 0.25s; }
+/* ===== 深色模式 ===== */
+@media (prefers-color-scheme: dark) {
+  .interview-room {
+    background: #1c1c1e;
+  }
+
+  .interview-container {
+    background: #2c2c2e;
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+
+  .interview-header {
+    background: rgba(44, 44, 46, 0.8);
+    border-bottom-color: rgba(255, 255, 255, 0.1);
+  }
+
+  .title-text h1 {
+    color: #f5f5f7;
+  }
+
+  .chat-container {
+    background: #2c2c2e;
+  }
+
+  .chat-container::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+  }
+
+  .chat-container::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
+  }
+
+  .message-role {
+    color: #98989d;
+  }
+
+  .message-text {
+    background: #3a3a3c;
+    color: #f5f5f7;
+  }
+
+  .message.candidate .message-text {
+    background: #0A84FF;
+  }
+
+  .typing-indicator {
+    background: #3a3a3c;
+  }
+
+  .typing-indicator span {
+    background: #98989d;
+  }
+
+  .input-area {
+    background: #2c2c2e;
+    border-top-color: rgba(255, 255, 255, 0.1);
+  }
+
+  .input-field {
+    background: #3a3a3c;
+    color: #f5f5f7;
+  }
+
+  .input-field::placeholder {
+    color: #98989d;
+  }
+
+  .input-field:hover {
+    background: #48484a;
+  }
+
+  .input-field:focus {
+    background: #3a3a3c;
+    border-color: #0A84FF;
+    box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.2);
+  }
+}
 </style>

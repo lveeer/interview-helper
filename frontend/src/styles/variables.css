@@ -1,14 +1,14 @@
-/* 全局样式变量系统 - Design Tokens */
+/* 全局样式变量系统 - Design Tokens (iMac Design Language) */
 :root {
-  /* ===== 品牌色 Brand Colors ===== */
-  --primary-color: #409EFF;
-  --primary-light: #79bbff;
-  --primary-lighter: #a0cfff;
-  --primary-dark: #337ecc;
-  --success-color: #67C23A;
-  --warning-color: #E6A23C;
-  --danger-color: #F56C6C;
-  --info-color: #909399;
+  /* ===== 品牌色 Brand Colors (Apple Style) ===== */
+  --primary-color: #007AFF;
+  --primary-light: #5AC8FA;
+  --primary-lighter: #64D2FF;
+  --primary-dark: #0056CC;
+  --success-color: #34C759;
+  --warning-color: #FF9500;
+  --danger-color: #FF3B30;
+  --info-color: #5856D6;
 
   /* ===== 文本色 Text Colors ===== */
   --text-primary: #303133;
@@ -52,27 +52,38 @@
   --spacing-xl: 32px;
   --spacing-xxl: 48px;
 
-  /* ===== 圆角 Border Radius ===== */
-  --radius-xs: 2px;
-  --radius-sm: 4px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-  --radius-xl: 16px;
+  /* ===== 圆角 Border Radius (Apple Style) ===== */
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-2xl: 32px;
   --radius-round: 50%;
 
-  /* ===== 阴影 Box Shadow ===== */
-  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
-  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
-  --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  /* ===== 阴影 Box Shadow (Apple Style) ===== */
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 2px 4px 0 rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 12px 0 rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 8px 24px 0 rgba(0, 0, 0, 0.12);
+  --shadow-xl: 0 16px 48px 0 rgba(0, 0, 0, 0.16);
+  --shadow-2xl: 0 24px 64px 0 rgba(0, 0, 0, 0.2);
 
-  /* ===== 过渡动画 Transition ===== */
-  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-slower: 500ms cubic-bezier(0.4, 0, 0.2, 1);
+  /* ===== 毛玻璃效果 Glassmorphism ===== */
+  --glass-bg: rgba(255, 255, 255, 0.72);
+  --glass-bg-dark: rgba(255, 255, 255, 0.85);
+  --glass-border: rgba(255, 255, 255, 0.6);
+  --glass-blur: 20px;
+  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.08);
+  --glass-bg-dark-mode: rgba(30, 30, 30, 0.8);
+
+  /* ===== 过渡动画 Transition (Apple Style) ===== */
+  --transition-fast: 150ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --transition-base: 250ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --transition-slow: 350ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --transition-slower: 500ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --transition-spring: 500ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  --transition-smooth: 300ms cubic-bezier(0.4, 0, 0.2, 1);
 
   /* ===== 字体 Typography ===== */
   --font-family-base: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
@@ -110,12 +121,15 @@
   --breakpoint-xl: 1200px;
   --breakpoint-xxl: 1600px;
 
-  /* ===== 渐变 Gradients ===== */
-  --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  --gradient-success: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
-  --gradient-warning: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-  --gradient-info: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-  --gradient-dark: linear-gradient(135deg, #232526 0%, #414345 100%);
+  /* ===== 渐变 Gradients (Apple Style) ===== */
+  --gradient-primary: linear-gradient(135deg, #007AFF 0%, #5AC8FA 100%);
+  --gradient-success: linear-gradient(135deg, #34C759 0%, #30D158 100%);
+  --gradient-warning: linear-gradient(135deg, #FF9500 0%, #FFCC00 100%);
+  --gradient-danger: linear-gradient(135deg, #FF3B30 0%, #FF453A 100%);
+  --gradient-info: linear-gradient(135deg, #5856D6 0%, #AF52DE 100%);
+  --gradient-dark: linear-gradient(135deg, #1C1C1E 0%, #2C2C2E 100%);
+  --gradient-glass: linear-gradient(135deg, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0.6) 100%);
+  --gradient-soft: linear-gradient(180deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.7) 100%);
 
   /* ===== 卡片 Card ===== */
   --card-bg: #ffffff;
