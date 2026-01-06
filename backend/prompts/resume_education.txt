@@ -1,0 +1,6 @@
+请从以下教育背景信息中提取并规范化数据，确保包含学校名称、学位、专业、起止时间。
+教育背景:
+{education_json}
+
+请以 JSON 数组格式返回，每个对象包含: school, degree, major, start_date, end_date
+只返回 JSON 数组，不要包含其他内容。

@@ -177,22 +177,18 @@ async def get_interviews(
 
     interviews = db.query(Interview).filter(
         Interview.user_id == current_user.id
-    ).all()
+    ).order_by(Interview.created_at.desc()).all()
 
-    # 构建响应数据列表，将 JSON 字符串解析为 Python 对象
+    # 构建响应数据列表，只返回列表页面需要的字段（精简版）
     interviews_data = []
     for interview in interviews:
-        interviews_data.append(InterviewResponse(
-            id=interview.id,
-            user_id=interview.user_id,
-            resume_id=interview.resume_id,
-            job_description=interview.job_description,
-            status=interview.status,
-            total_score=interview.total_score,
-            questions=json.loads(interview.questions) if interview.questions else [],
-            conversation=json.loads(interview.conversation) if interview.conversation else [],
-            created_at=interview.created_at
-        ))
+        interviews_data.append({
+            "id": interview.id,
+            "job_description": interview.job_description,
+            "status": interview.status,
+            "total_score": interview.total_score,
+            "created_at": interview.created_at
+        })
 
     return ListResponse(
         code=200,

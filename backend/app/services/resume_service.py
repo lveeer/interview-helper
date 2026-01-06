@@ -560,16 +560,10 @@ async def parse_resume_with_llm(file_path: str, llm_service) -> Dict[str, Any]:
 
         # 使用 LLM 增强技能提取
         try:
-            skills_prompt = f"""
-请从以下简历信息中提取更全面的技能列表，包括但不限于编程语言、框架、工具、数据库等。
-简历信息:
-{resume_text}
-
-请以 JSON 数组格式返回技能列表，例如:
-["Python", "Java", "React", "MySQL", "Docker"]
-
-只返回 JSON 数组，不要包含其他内容。
-"""
+            skills_prompt = PromptLoader.format_prompt(
+                'resume_skills',
+                resume_text=resume_text
+            )
             skills_response = await llm_service.generate_text(skills_prompt, temperature=0.3)
             try:
                 llm_skills = json.loads(skills_response)
@@ -584,16 +578,10 @@ async def parse_resume_with_llm(file_path: str, llm_service) -> Dict[str, Any]:
 
         # 使用 LLM 提取亮点
         try:
-            highlights_prompt = f"""
-请从以下简历信息中提取 3-5 个个人亮点和核心优势，突出候选人的独特价值和核心竞争力。
-简历信息:
-{resume_text}
-
-请以 JSON 数组格式返回亮点列表，例如:
-["拥有5年全栈开发经验", "主导过多个高并发项目", "精通微服务架构"]
-
-只返回 JSON 数组，不要包含其他内容。
-"""
+            highlights_prompt = PromptLoader.format_prompt(
+                'resume_highlights',
+                resume_text=resume_text
+            )
             highlights_response = await llm_service.generate_text(highlights_prompt, temperature=0.5)
             try:
                 llm_highlights = json.loads(highlights_response)
@@ -608,14 +596,10 @@ async def parse_resume_with_llm(file_path: str, llm_service) -> Dict[str, Any]:
         # 使用 LLM 增强教育背景
         if base_result['education']:
             try:
-                education_prompt = f"""
-请从以下教育背景信息中提取并规范化数据，确保包含学校名称、学位、专业、起止时间。
-教育背景:
-{json.dumps(base_result['education'], ensure_ascii=False, indent=2)}
-
-请以 JSON 数组格式返回，每个对象包含: school, degree, major, start_date, end_date
-只返回 JSON 数组，不要包含其他内容。
-"""
+                education_prompt = PromptLoader.format_prompt(
+                    'resume_education',
+                    education_json=json.dumps(base_result['education'], ensure_ascii=False, indent=2)
+                )
                 education_response = await llm_service.generate_text(education_prompt, temperature=0.3)
                 try:
                     llm_education = json.loads(education_response)
@@ -630,14 +614,10 @@ async def parse_resume_with_llm(file_path: str, llm_service) -> Dict[str, Any]:
         # 使用 LLM 增强工作经历
         if base_result['experience']:
             try:
-                experience_prompt = f"""
-请从以下工作经历信息中提取并规范化数据，确保包含公司名称、职位、起止时间、工作描述。
-工作经历:
-{json.dumps(base_result['experience'], ensure_ascii=False, indent=2)}
-
-请以 JSON 数组格式返回，每个对象包含: company, position, start_date, end_date, description
-只返回 JSON 数组，不要包含其他内容。
-"""
+                experience_prompt = PromptLoader.format_prompt(
+                    'resume_experience',
+                    experience_json=json.dumps(base_result['experience'], ensure_ascii=False, indent=2)
+                )
                 experience_response = await llm_service.generate_text(experience_prompt, temperature=0.3)
                 try:
                     llm_experience = json.loads(experience_response)

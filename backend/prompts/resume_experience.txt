@@ -1,0 +1,6 @@
+请从以下工作经历信息中提取并规范化数据，确保包含公司名称、职位、起止时间、工作描述。
+工作经历:
+{experience_json}
+
+请以 JSON 数组格式返回，每个对象包含: company, position, start_date, end_date, description
+只返回 JSON 数组，不要包含其他内容。

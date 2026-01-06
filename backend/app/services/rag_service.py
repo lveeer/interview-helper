@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from app.models.knowledge import KnowledgeDocument, VectorChunk
 from sqlalchemy import text
 import json
+from app.utils.prompt_loader import PromptLoader
 
 
 class RAGService:
@@ -335,24 +336,12 @@ class RAGService:
 
             llm = await get_llm()
 
-            prompt = f"""请为以下查询生成 {num_expansions} 个不同的查询变体，以提高检索的召回率。
-
-原始查询：{query}
-
-要求：
-1. 查询变体应该保持原意，但使用不同的表达方式
-2. 可以包含同义词、相关概念、更具体或更宽泛的表述
-3. 每个变体应该简洁明了
-4. 只返回查询变体，每行一个，不要编号
-
-例如：
-原始查询：如何优化 Python 程序性能
-扩展查询：
-Python 代码性能优化技巧
-提升 Python 运行速度的方法
-Python 性能调优最佳实践
-
-请生成 {num_expansions} 个查询变体："""
+            # 加载提示词模板
+            prompt = PromptLoader.format_prompt(
+                'query_expansion',
+                num_expansions=num_expansions,
+                query=query
+            )
 
             response = await llm.generate_text(prompt, temperature=0.7)
 
@@ -669,19 +658,13 @@ Python 性能调优最佳实践
             for i, result in enumerate(results[:top_k * 2]):  # 只重排序前 2*top_k 个结果
                 candidates_text += f"\n{i+1}. {result['content']}\n"
 
-            prompt = f"""请根据查询内容，对以下候选文档片段进行相关性评分。
-
-查询：{query}
-
-候选文档片段：
-{candidates_text}
-
-请评估每个片段与查询的相关性，并返回一个 JSON 数组，包含以下字段：
-- index: 片段编号（1-{len(results[:top_k * 2])}）
-- score: 相关性分数（0-1，保留3位小数）
-- reason: 评分理由（简短说明）
-
-只返回 JSON 数组，不要其他内容。"""
+            # 加载提示词模板
+            prompt = PromptLoader.format_prompt(
+                'rerank_results',
+                query=query,
+                candidates_text=candidates_text,
+                num_candidates=len(results[:top_k * 2])
+            )
 
             response = await llm.generate_text(prompt, temperature=0.3)
 
