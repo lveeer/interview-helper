@@ -18,6 +18,7 @@ class KnowledgeDocument(Base):
     status = Column(String(20), default="pending")  # pending, processing, completed, failed
     chunk_count = Column(Integer, default=0)
     error_message = Column(Text)
+    category = Column(String(50), default="")  # 文档分类：技术文档、面试题、公司资料、其他、空字符串
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
@@ -36,3 +37,14 @@ class VectorChunk(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     document = relationship("KnowledgeDocument", backref="chunks")
+
+
+class QueryHistory(Base):
+    __tablename__ = "query_history"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    query_text = Column(String(500), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    user = relationship("User", backref="query_history")

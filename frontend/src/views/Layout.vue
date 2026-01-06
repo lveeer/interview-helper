@@ -13,7 +13,37 @@
       :class="{ 'mobile-open': isMobileMenuOpen }"
     >
       <div class="logo">
-        <h3>智能面试系统</h3>
+        <svg class="logo-icon" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" style="stop-color:#409EFF;stop-opacity:1" />
+              <stop offset="100%" style="stop-color:#667EEA;stop-opacity:1" />
+            </linearGradient>
+            <linearGradient id="logoGradient2" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" style="stop-color:#667EEA;stop-opacity:1" />
+              <stop offset="100%" style="stop-color:#764BA2;stop-opacity:1" />
+            </linearGradient>
+          </defs>
+          <!-- 外圆环 -->
+          <circle cx="32" cy="32" r="28" stroke="url(#logoGradient)" stroke-width="2" fill="none" opacity="0.3"/>
+          <circle cx="32" cy="32" r="24" stroke="url(#logoGradient)" stroke-width="1.5" fill="none" opacity="0.5"/>
+          <!-- 中心图标 - 智能AI -->
+          <circle cx="32" cy="32" r="16" fill="url(#logoGradient)"/>
+          <!-- AI芯片图案 -->
+          <rect x="26" y="26" width="12" height="12" rx="2" fill="white" opacity="0.9"/>
+          <circle cx="29" cy="29" r="1.5" fill="#409EFF"/>
+          <circle cx="35" cy="29" r="1.5" fill="#409EFF"/>
+          <path d="M29 34 Q32 36 35 34" stroke="#409EFF" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+          <!-- 连接线 -->
+          <line x1="32" y1="16" x2="32" y2="10" stroke="url(#logoGradient2)" stroke-width="2" stroke-linecap="round"/>
+          <line x1="32" y1="48" x2="32" y2="54" stroke="url(#logoGradient2)" stroke-width="2" stroke-linecap="round"/>
+          <line x1="16" y1="32" x2="10" y2="32" stroke="url(#logoGradient2)" stroke-width="2" stroke-linecap="round"/>
+          <line x1="48" y1="32" x2="54" y2="32" stroke="url(#logoGradient2)" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        <div class="logo-text">
+          <span class="logo-title">智能面试提升系统</span>
+          <span class="logo-subtitle">AI</span>
+        </div>
       </div>
       <el-menu
         :default-active="activeMenu"
@@ -176,14 +206,16 @@ onUnmounted(() => {
 
 /* Logo区域 */
 .logo {
-  height: var(--header-height);
+  height: 80px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.2);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background: linear-gradient(135deg, #1e293b 0%, #304156 50%, #1e293b 100%);
+  border-bottom: 1px solid rgba(64, 158, 255, 0.3);
   position: relative;
   overflow: hidden;
+  padding: 0 var(--spacing-md);
+  gap: var(--spacing-md);
 }
 
 .logo::before {
@@ -193,31 +225,69 @@ onUnmounted(() => {
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(135deg, rgba(64, 158, 255, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
-  opacity: 0;
+  background: linear-gradient(135deg,
+    rgba(64, 158, 255, 0.25) 0%,
+    rgba(102, 126, 234, 0.2) 25%,
+    rgba(118, 75, 162, 0.25) 50%,
+    rgba(102, 126, 234, 0.2) 75%,
+    rgba(64, 158, 255, 0.25) 100%);
+  opacity: 1;
   transition: opacity var(--transition-base);
+  animation: gradientShift 6s ease-in-out infinite;
 }
 
 .logo:hover::before {
-  opacity: 1;
+  opacity: 0.85;
 }
 
-.logo h3 {
-  margin: 0;
-  font-size: var(--font-size-lg);
-  font-weight: var(--font-weight-semibold);
-  color: #ffffff;
-  letter-spacing: 0.5px;
+@keyframes gradientShift {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+.logo-icon {
+  width: 36px;
+  height: 36px;
   position: relative;
   z-index: 1;
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
+  filter: drop-shadow(0 2px 4px rgba(64, 158, 255, 0.3));
+  transition: transform var(--transition-base);
 }
 
-.logo h3::before {
-  content: '🎯';
-  font-size: 20px;
+.logo:hover .logo-icon {
+  transform: scale(1.1) rotate(5deg);
+}
+
+.logo-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  position: relative;
+  z-index: 1;
+  line-height: 1.2;
+}
+
+.logo-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: 1.5px;
+  background: linear-gradient(135deg, #ffffff 0%, #e8f4ff 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.logo-subtitle {
+  font-size: 14px;
+  font-weight: 700;
+  color: #409EFF;
+  letter-spacing: 4px;
+  margin-top: 4px;
 }
 
 /* 菜单样式 */
@@ -448,8 +518,17 @@ onUnmounted(() => {
     padding: 0 var(--spacing-md);
   }
 
-  .logo h3 {
-    font-size: var(--font-size-base);
+  .logo-title {
+    font-size: 13px;
+  }
+
+  .logo-subtitle {
+    font-size: 9px;
+  }
+
+  .logo-icon {
+    width: 32px;
+    height: 32px;
   }
 
   .el-dropdown-link span {

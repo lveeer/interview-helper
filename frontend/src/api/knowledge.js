@@ -38,3 +38,36 @@ export const deleteKnowledge = (id) => {
     method: 'delete'
   })
 }
+
+// 获取文档预览内容
+export const getDocumentPreview = (id) => {
+  return request({
+    url: `/knowledge/${id}/preview`,
+    method: 'get'
+  })
+}
+
+// 更新文档分类
+export const updateDocumentCategory = (id, category) => {
+  return request({
+    url: `/knowledge/${id}/category`,
+    method: 'put',
+    data: { category }
+  })
+}
+
+// 获取查询历史
+export const getQueryHistory = () => {
+  return request({
+    url: '/knowledge/query/history',
+    method: 'get'
+  })
+}
+
+// 清空查询历史
+export const clearQueryHistory = () => {
+  return request({
+    url: '/knowledge/query/history',
+    method: 'delete'
+  })
+}

@@ -143,6 +143,7 @@ onMounted(() => {
   animation: fadeIn var(--transition-base);
   position: relative;
   z-index: 1;
+  padding-top: var(--spacing-xl);
 }
 
 @keyframes fadeIn {

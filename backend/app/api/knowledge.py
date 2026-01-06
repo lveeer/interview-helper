@@ -3,8 +3,14 @@ from sqlalchemy.orm import Session
 from typing import List
 from app.core.database import get_db
 from app.models.user import User
-from app.models.knowledge import KnowledgeDocument
-from app.schemas.knowledge import KnowledgeDocumentResponse, KnowledgeQuery
+from app.models.knowledge import KnowledgeDocument, QueryHistory
+from app.schemas.knowledge import (
+    KnowledgeDocumentResponse,
+    KnowledgeQuery,
+    DocumentPreviewResponse,
+    CategoryUpdateRequest,
+    QueryHistoryRequest
+)
 from app.api.auth import get_current_user
 import os
 from config import settings
@@ -92,7 +98,7 @@ async def delete_knowledge_document(
         raise HTTPException(
             status_code=404,
             detail="文档不存在"
-    )
+        )
     # 删除文件
     if os.path.exists(doc.file_path):
         os.remove(doc.file_path)
@@ -127,6 +133,45 @@ async def query_knowledge(
         db=db
     )
 
+    # 自动保存查询历史
+    try:
+        # 检查是否已存在相同的查询（避免重复保存）
+        existing = db.query(QueryHistory).filter(
+            QueryHistory.user_id == current_user.id,
+            QueryHistory.query_text == query.query
+        ).first()
+
+        if existing:
+            # 如果已存在，更新时间戳
+            from sqlalchemy.sql import func
+            existing.created_at = func.now()
+            db.commit()
+        else:
+            # 创建新的查询历史记录
+            new_history = QueryHistory(
+                user_id=current_user.id,
+                query_text=query.query
+            )
+            db.add(new_history)
+            db.commit()
+
+            # 检查是否超过10条记录，如果超过则删除最旧的
+            history_count = db.query(QueryHistory).filter(
+                QueryHistory.user_id == current_user.id
+            ).count()
+
+            if history_count > 10:
+                # 获取最旧的记录并删除
+                oldest = db.query(QueryHistory).filter(
+                    QueryHistory.user_id == current_user.id
+                ).order_by(QueryHistory.created_at.asc()).first()
+                if oldest:
+                    db.delete(oldest)
+                    db.commit()
+    except Exception as e:
+        # 保存查询历史失败不影响查询结果
+        print(f"保存查询历史失败: {e}")
+
     return ApiResponse(
         code=200,
         message="查询成功",
@@ -140,3 +185,149 @@ async def query_knowledge(
             }
         }
     )
+
+
+@router.get("/{doc_id}/preview")
+async def get_document_preview(
+    doc_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """获取文档预览内容"""
+    from app.schemas.common import ApiResponse
+
+    doc = db.query(KnowledgeDocument).filter(
+        KnowledgeDocument.id == doc_id,
+        KnowledgeDocument.user_id == current_user.id
+    ).first()
+
+    if not doc:
+        raise HTTPException(
+            status_code=404,
+            detail="文档不存在"
+        )
+
+    # 获取文档内容，如果内容过长则截断
+    content = doc.content or ""
+    max_length = 5000
+    if len(content) > max_length:
+        content = content[:max_length] + "\n\n... (内容过长，已截断)"
+
+    return ApiResponse(
+        code=200,
+        message="success",
+        data=DocumentPreviewResponse(content=content)
+    )
+
+
+@router.put("/{doc_id}/category")
+async def update_document_category(
+    doc_id: int,
+    category_update: CategoryUpdateRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """更新文档分类"""
+    from app.schemas.common import SuccessResponse
+
+    doc = db.query(KnowledgeDocument).filter(
+        KnowledgeDocument.id == doc_id,
+        KnowledgeDocument.user_id == current_user.id
+    ).first()
+
+    if not doc:
+        raise HTTPException(
+            status_code=404,
+            detail="文档不存在"
+        )
+
+    doc.category = category_update.category
+    db.commit()
+
+    return SuccessResponse(message="分类更新成功")
+
+
+@router.get("/query/history")
+async def get_query_history(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """获取查询历史记录"""
+    from app.schemas.common import ApiResponse
+
+    # 获取最近的10条查询历史，按时间倒序
+    history = db.query(QueryHistory).filter(
+        QueryHistory.user_id == current_user.id
+    ).order_by(QueryHistory.created_at.desc()).limit(10).all()
+
+    # 提取查询文本
+    queries = [h.query_text for h in history]
+
+    return ApiResponse(
+        code=200,
+        message="success",
+        data=queries
+    )
+
+
+@router.delete("/query/history")
+async def clear_query_history(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """清空查询历史记录"""
+    from app.schemas.common import SuccessResponse
+
+    # 删除当前用户的所有查询历史
+    db.query(QueryHistory).filter(
+        QueryHistory.user_id == current_user.id
+    ).delete()
+    db.commit()
+
+    return SuccessResponse(message="历史记录已清空")
+
+
+@router.post("/query/history")
+async def save_query_history(
+    history_request: QueryHistoryRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """保存查询历史记录"""
+    from app.schemas.common import SuccessResponse
+
+    # 检查是否已存在相同的查询（避免重复保存）
+    existing = db.query(QueryHistory).filter(
+        QueryHistory.user_id == current_user.id,
+        QueryHistory.query_text == history_request.query
+    ).first()
+
+    if existing:
+        # 如果已存在，更新时间戳
+        from sqlalchemy.sql import func
+        existing.created_at = func.now()
+        db.commit()
+    else:
+        # 创建新的查询历史记录
+        new_history = QueryHistory(
+            user_id=current_user.id,
+            query_text=history_request.query
+        )
+        db.add(new_history)
+        db.commit()
+
+        # 检查是否超过10条记录，如果超过则删除最旧的
+        history_count = db.query(QueryHistory).filter(
+            QueryHistory.user_id == current_user.id
+        ).count()
+
+        if history_count > 10:
+            # 获取最旧的记录并删除
+            oldest = db.query(QueryHistory).filter(
+                QueryHistory.user_id == current_user.id
+            ).order_by(QueryHistory.created_at.asc()).first()
+            if oldest:
+                db.delete(oldest)
+                db.commit()
+
+    return SuccessResponse(message="查询记录已保存")

@@ -65,6 +65,7 @@ async def get_interview_report(
     from datetime import datetime
     interview.evaluation_report = json.dumps(report_data, ensure_ascii=False)
     interview.evaluation_generated_at = datetime.now()
+    interview.total_score = report_data.get("total_score", 0)
     db.commit()
 
     return ApiResponse(
