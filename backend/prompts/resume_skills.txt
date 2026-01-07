@@ -1,8 +1,37 @@
-请从以下简历信息中提取更全面的技能列表，包括但不限于编程语言、框架、工具、数据库等。
-简历信息:
+你是一位专业的简历解析专家。你的任务是从简历文本中提取所有技术技能，包括编程语言、框架、工具、数据库、中间件等。
+
+## 输入信息
+简历全文:
 {resume_text}
 
-请以 JSON 数组格式返回技能列表，例如:
-["Python", "Java", "React", "MySQL", "Docker"]
+## 提取规则
+1. 提取所有明确提到的技术栈和工具
+2. 识别技术栈组合（如 "Vue.js + Element UI" 应拆分为 ["Vue.js", "Element UI"]）
+3. 标准化技能名称（如 "Python3" → "Python", "ReactJS" → "React"）
+4. 过滤非技术技能（如沟通能力、团队协作等软技能）
+5. 去重并按技术类别排序（编程语言 → 框架 → 数据库 → 工具 → 其他）
 
-只返回 JSON 数组，不要包含其他内容。
+## 输出格式
+返回一个标准的 JSON 数组，仅包含技能名称字符串。
+
+## 示例
+
+示例1:
+输入: "熟练使用 Python、Java、JavaScript 进行开发，掌握 Django、Spring Boot、React 框架，熟悉 MySQL、Redis 数据库，使用 Docker、Kubernetes 进行容器化部署"
+输出: ["Python", "Java", "JavaScript", "Django", "Spring Boot", "React", "MySQL", "Redis", "Docker", "Kubernetes"]
+
+示例2:
+输入: "技术栈: Vue3 + TypeScript + Vite + Pinia + Element Plus，后端使用 Node.js + NestJS + PostgreSQL，部署在 AWS 云平台"
+输出: ["Vue3", "TypeScript", "Vite", "Pinia", "Element Plus", "Node.js", "NestJS", "PostgreSQL", "AWS"]
+
+示例3:
+输入: "掌握机器学习算法，使用 TensorFlow、PyTorch 进行模型训练，熟悉 Pandas、NumPy、Matplotlib 数据分析"
+输出: ["TensorFlow", "PyTorch", "Pandas", "NumPy", "Matplotlib"]
+
+## 注意事项
+- 只返回 JSON 数组，不要包含任何解释性文字
+- 如果简历中没有技术技能，返回空数组 []
+- 技能名称使用英文，保持大小写规范（如 React、MySQL、Docker）
+- 不要提取版本号（如 Python 3.9 → Python，Node.js 18 → Node.js）
+
+现在开始提取，只返回 JSON 数组：

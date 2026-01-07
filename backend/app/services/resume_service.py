@@ -4,15 +4,6 @@ import json
 import logging
 from typing import Dict, Any, List, Optional
 from datetime import datetime
-try:
-    import pypdf
-except ImportError:
-    pypdf = None
-
-try:
-    import pdfplumber
-except ImportError:
-    pdfplumber = None
 
 # 配置日志
 logging.basicConfig(level=logging.INFO)
@@ -20,61 +11,61 @@ logger = logging.getLogger(__name__)
 
 
 class ResumeParser:
-    """简历解析服务 - 使用 Unstructured.io 和正则表达式提取结构化信息"""
+    """简历解析服务 - 使用 Unstructured.io 提取文本，LLM 增强结构化信息"""
 
     @staticmethod
-    def _extract_text_with_pdfplumber(file_path: str, fallback_text: str = "") -> str:
+    def _extract_text_with_unstructured(file_path: str) -> str:
         """
-        使用 pdfplumber 提取 PDF 文本（支持图片型PDF的OCR）
+        提取文档文本 - 使用 pypdf 作为主要方法
 
         Args:
-            file_path: PDF文件路径
-            fallback_text: 备用文本（如果pdfplumber也失败）
+            file_path: 文档文件路径
 
         Returns:
             提取的文本内容
         """
-        if not pdfplumber:
-            logger.warning("pdfplumber 未安装，使用备用文本")
-            return fallback_text
-
         try:
-            with pdfplumber.open(file_path) as pdf:
+            import pypdf
+
+            file_ext = os.path.splitext(file_path)[1].lower()
+
+            if file_ext == '.pdf':
+                # 使用 pypdf 提取 PDF 文本
+                reader = pypdf.PdfReader(file_path)
                 text_content = ""
-                for page in pdf.pages:
-                    # 先尝试直接提取文本
-                    text = page.extract_text()
-                    if text:
-                        text_content += text + "\n"
-                    else:
-                        # 如果没有文本，可能是图片型PDF
-                        # 尝试使用OCR（需要系统安装tesseract）
-                        logger.warning(f"第{pdf.pages.index(page) + 1}页未检测到文本，尝试OCR")
-                        try:
-                            # 检查是否有图片对象
-                            if page.images:
-                                logger.info(f"检测到 {len(page.images)} 个图片对象")
-                                # 注意：完整的OCR需要安装tesseract-ocr和pytesseract
-                                # 这里先记录日志，实际OCR功能需要额外配置
-                                logger.warning("OCR功能需要安装tesseract-ocr和pytesseract库")
-                        except Exception as e:
-                            logger.warning(f"OCR尝试失败: {e}")
+                for page in reader.pages:
+                    text_content += page.extract_text() + "\n"
+                logger.info(f"pypdf 成功提取 {len(text_content)} 字符，共 {len(reader.pages)} 页")
+                return text_content
 
-                if len(text_content.strip()) > 50:
-                    logger.info(f"pdfplumber成功提取 {len(text_content)} 字符")
-                    return text_content
-                else:
-                    logger.warning("pdfplumber提取的文本仍然过少")
-                    return fallback_text
+            elif file_ext in ['.docx', '.doc']:
+                # 使用 docx2txt 提取 Word 文本
+                import docx2txt
+                text_content = docx2txt.process(file_path)
+                logger.info(f"docx2txt 成功提取 {len(text_content)} 字符")
+                return text_content
 
+            else:
+                # 其他格式尝试使用 unstructured
+                from unstructured.partition.auto import partition
+                elements = partition(filename=file_path)
+                text_content = ""
+                for element in elements:
+                    text_content += str(element) + "\n"
+                logger.info(f"unstructured.io 成功提取 {len(text_content)} 字符，共 {len(elements)} 个元素")
+                return text_content
+
+        except ImportError as e:
+            logger.error(f"缺少必要的库: {e}")
+            raise Exception(f"文档文本提取失败，缺少必要的库: {str(e)}")
         except Exception as e:
-            logger.error(f"pdfplumber解析失败: {e}")
-            return fallback_text
+            logger.error(f"文档文本提取失败: {e}", exc_info=True)
+            raise Exception(f"文档文本提取失败: {str(e)}")
 
     @staticmethod
     def parse_resume(file_path: str) -> Dict[str, Any]:
         """
-        解析简历文件，提取结构化信息
+        解析简历文件，提取结构化信息（基础版，建议使用 LLM 增强版）
 
         Args:
             file_path: 简历文件路径
@@ -87,38 +78,8 @@ class ResumeParser:
         file_ext = os.path.splitext(file_path)[1].lower()
 
         try:
-            # 提取文本内容
-            text_content = ""
-
-            if file_ext == '.pdf':
-                if pypdf:
-                    # 使用 pypdf 解析 PDF
-                    with open(file_path, 'rb') as f:
-                        reader = pypdf.PdfReader(f)
-                        for page in reader.pages:
-                            text_content += page.extract_text() + "\n"
-                    
-                    # 如果提取的文本过少，可能是图片型PDF，尝试使用pdfplumber
-                    if len(text_content.strip()) < 100:
-                        logger.warning("pypdf提取的文本过少，尝试使用pdfplumber")
-                        text_content = ResumeParser._extract_text_with_pdfplumber(file_path, text_content)
-                else:
-                    raise Exception("pypdf 未安装，无法解析 PDF")
-            elif file_ext in ['.docx', '.doc']:
-                # 使用 python-docx 解析 Word 文档
-                try:
-                    from docx import Document
-                    doc = Document(file_path)
-                    for para in doc.paragraphs:
-                        text_content += para.text + "\n"
-                except ImportError:
-                    raise Exception("python-docx 未安装，无法解析 Word 文档")
-            elif file_ext == '.txt':
-                # 直接读取文本文件
-                with open(file_path, 'r', encoding='utf-8') as f:
-                    text_content = f.read()
-            else:
-                raise Exception(f"不支持的文件类型: {file_ext}")
+            # 提取文本内容（使用 unstructured.io）
+            text_content = ResumeParser._extract_text_with_unstructured(file_path)
 
             logger.info(f"提取文本内容长度: {len(text_content)} 字符")
 
@@ -524,7 +485,7 @@ class ResumeParser:
 
 async def parse_resume_with_llm(file_path: str, llm_service) -> Dict[str, Any]:
     """
-    使用 LLM 增强的简历解析
+    使用 LLM 增强的简历解析 - 直接从原始文本提取，不依赖基础解析
 
     Args:
         file_path: 简历文件路径
@@ -534,103 +495,107 @@ async def parse_resume_with_llm(file_path: str, llm_service) -> Dict[str, Any]:
         包含详细解析结果的字典
     """
     logger.info(f"开始使用 LLM 增强解析简历: {file_path}")
-    
+
     try:
-        # 先用 Unstructured.io 提取基础信息
-        base_result = ResumeParser.parse_resume(file_path)
+        # 使用 unstructured.io 提取原始文本
+        raw_text = ResumeParser._extract_text_with_unstructured(file_path)
 
-        # 准备完整的简历文本
-        resume_text = f"""
-姓名: {base_result['personal_info'].get('name', '未知')}
-邮箱: {base_result['personal_info'].get('email', '未知')}
-电话: {base_result['personal_info'].get('phone', '未知')}
+        logger.info(f"原始文本提取完成，长度: {len(raw_text)} 字符")
 
-教育背景:
-{json.dumps(base_result['education'], ensure_ascii=False, indent=2)}
+        # 初始化结果
+        result = {
+            "personal_info": {},
+            "education": [],
+            "experience": [],
+            "skills": [],
+            "projects": [],
+            "highlights": []
+        }
 
-工作经历:
-{json.dumps(base_result['experience'], ensure_ascii=False, indent=2)}
-
-项目经历:
-{json.dumps(base_result['projects'], ensure_ascii=False, indent=2)}
-
-技能:
-{', '.join(base_result['skills'])}
-"""
-
-        # 使用 LLM 增强技能提取
+        # 使用 LLM 提取技能
         try:
+            from app.utils.prompt_loader import PromptLoader
             skills_prompt = PromptLoader.format_prompt(
                 'resume_skills',
-                resume_text=resume_text
+                resume_text=raw_text
             )
             skills_response = await llm_service.generate_text(skills_prompt, temperature=0.3)
             try:
                 llm_skills = json.loads(skills_response)
                 if isinstance(llm_skills, list):
-                    # 合并原有技能和 LLM 提取的技能
-                    base_result['skills'] = list(set(base_result['skills'] + llm_skills))
-                    logger.info(f"LLM 增强技能提取完成，共 {len(base_result['skills'])} 个技能")
+                    result['skills'] = llm_skills
+                    logger.info(f"LLM 技能提取完成，共 {len(result['skills'])} 个技能")
             except json.JSONDecodeError:
-                logger.warning("LLM 技能解析失败，使用基础提取结果")
+                logger.warning("LLM 技能解析失败，尝试使用基础提取")
+                result['skills'] = ResumeParser._extract_skills(raw_text)
         except Exception as e:
-            logger.warning(f"LLM 技能提取失败: {e}，使用基础提取结果")
+            logger.warning(f"LLM 技能提取失败: {e}，使用基础提取")
+            result['skills'] = ResumeParser._extract_skills(raw_text)
+
+        # 使用 LLM 提取教育背景
+        try:
+            from app.utils.prompt_loader import PromptLoader
+            education_prompt = PromptLoader.format_prompt(
+                'resume_education',
+                resume_text=raw_text
+            )
+            education_response = await llm_service.generate_text(education_prompt, temperature=0.3)
+            try:
+                llm_education = json.loads(education_response)
+                if isinstance(llm_education, list):
+                    result['education'] = llm_education
+                    logger.info(f"LLM 教育背景提取完成，共 {len(result['education'])} 条记录")
+            except json.JSONDecodeError:
+                logger.warning("LLM 教育背景解析失败，尝试使用基础提取")
+                result['education'] = ResumeParser._extract_education(raw_text)
+        except Exception as e:
+            logger.warning(f"LLM 教育背景提取失败: {e}，使用基础提取")
+            result['education'] = ResumeParser._extract_education(raw_text)
+
+        # 使用 LLM 提取工作经历
+        try:
+            from app.utils.prompt_loader import PromptLoader
+            experience_prompt = PromptLoader.format_prompt(
+                'resume_experience',
+                resume_text=raw_text
+            )
+            experience_response = await llm_service.generate_text(experience_prompt, temperature=0.3)
+            try:
+                llm_experience = json.loads(experience_response)
+                if isinstance(llm_experience, list):
+                    result['experience'] = llm_experience
+                    logger.info(f"LLM 工作经历提取完成，共 {len(result['experience'])} 条记录")
+            except json.JSONDecodeError:
+                logger.warning("LLM 工作经历解析失败，尝试使用基础提取")
+                result['experience'] = ResumeParser._extract_experience(raw_text)
+        except Exception as e:
+            logger.warning(f"LLM 工作经历提取失败: {e}，使用基础提取")
+            result['experience'] = ResumeParser._extract_experience(raw_text)
 
         # 使用 LLM 提取亮点
         try:
+            from app.utils.prompt_loader import PromptLoader
             highlights_prompt = PromptLoader.format_prompt(
                 'resume_highlights',
-                resume_text=resume_text
+                resume_text=raw_text
             )
             highlights_response = await llm_service.generate_text(highlights_prompt, temperature=0.5)
             try:
                 llm_highlights = json.loads(highlights_response)
-                if isinstance(llm_highlights, list) and llm_highlights:
-                    base_result['highlights'] = llm_highlights
-                    logger.info(f"LLM 亮点提取完成，共 {len(base_result['highlights'])} 个亮点")
+                if isinstance(llm_highlights, list):
+                    result['highlights'] = llm_highlights
+                    logger.info(f"LLM 亮点提取完成，共 {len(result['highlights'])} 个亮点")
             except json.JSONDecodeError:
                 logger.warning("LLM 亮点解析失败")
         except Exception as e:
             logger.warning(f"LLM 亮点提取失败: {e}")
 
-        # 使用 LLM 增强教育背景
-        if base_result['education']:
-            try:
-                education_prompt = PromptLoader.format_prompt(
-                    'resume_education',
-                    education_json=json.dumps(base_result['education'], ensure_ascii=False, indent=2)
-                )
-                education_response = await llm_service.generate_text(education_prompt, temperature=0.3)
-                try:
-                    llm_education = json.loads(education_response)
-                    if isinstance(llm_education, list) and llm_education:
-                        base_result['education'] = llm_education
-                        logger.info(f"LLM 教育背景增强完成")
-                except json.JSONDecodeError:
-                    logger.warning("LLM 教育背景解析失败")
-            except Exception as e:
-                logger.warning(f"LLM 教育背景增强失败: {e}")
-
-        # 使用 LLM 增强工作经历
-        if base_result['experience']:
-            try:
-                experience_prompt = PromptLoader.format_prompt(
-                    'resume_experience',
-                    experience_json=json.dumps(base_result['experience'], ensure_ascii=False, indent=2)
-                )
-                experience_response = await llm_service.generate_text(experience_prompt, temperature=0.3)
-                try:
-                    llm_experience = json.loads(experience_response)
-                    if isinstance(llm_experience, list) and llm_experience:
-                        base_result['experience'] = llm_experience
-                        logger.info(f"LLM 工作经历增强完成")
-                except json.JSONDecodeError:
-                    logger.warning("LLM 工作经历解析失败")
-            except Exception as e:
-                logger.warning(f"LLM 工作经历增强失败: {e}")
+        # 提取个人信息（使用正则表达式，这部分相对简单）
+        result['personal_info'] = ResumeParser._extract_personal_info(raw_text)
+        result['projects'] = ResumeParser._extract_projects(raw_text)
 
         logger.info("LLM 增强简历解析完成")
-        return base_result
+        return result
 
     except Exception as e:
         logger.error(f"LLM 增强简历解析失败: {e}", exc_info=True)

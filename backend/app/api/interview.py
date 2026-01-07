@@ -18,7 +18,7 @@ async def create_interview(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """创建新的面试会话"""
+    """创建新的面试会话（异步生成问题）"""
     import asyncio
     from app.schemas.common import ApiResponse
 
@@ -55,43 +55,15 @@ async def create_interview(
             detail=f"简历数据解析失败: {str(e)}"
         )
 
-    # 调用面试问题生成服务（添加超时保护）
-    from app.services.interview_service import InterviewService
-    try:
-        print(f"[创建面试] 开始生成面试问题...")
-        # 设置 90 秒超时
-        questions = await asyncio.wait_for(
-            InterviewService.generate_interview_questions(
-                resume_data,
-                interview_data.job_description
-            ),
-            timeout=90.0
-        )
-        print(f"[创建面试] 成功生成 {len(questions)} 个问题")
-    except asyncio.TimeoutError:
-        print(f"[创建面试] 生成面试问题超时")
-        raise HTTPException(
-            status_code=504,
-            detail="生成面试问题超时，请稍后重试"
-        )
-    except Exception as e:
-        print(f"[创建面试] 生成面试问题失败: {type(e).__name__}: {e}")
-        import traceback
-        traceback.print_exc()
-        raise HTTPException(
-            status_code=500,
-            detail=f"生成面试问题失败: {str(e)}"
-        )
-
-    # 创建面试记录
+    # 创建面试记录（状态为初始化中）
     try:
         print(f"[创建面试] 开始创建数据库记录...")
         db_interview = Interview(
             user_id=current_user.id,
             resume_id=interview_data.resume_id,
             job_description=interview_data.job_description,
-            status=InterviewStatus.PENDING,
-            questions=json.dumps(questions),
+            status=InterviewStatus.initializing,
+            questions=None,
             conversation=json.dumps([])
         )
         db.add(db_interview)
@@ -108,6 +80,19 @@ async def create_interview(
             detail=f"创建面试记录失败: {str(e)}"
         )
 
+    # 启动后台异步任务生成面试问题
+    from app.services.interview_service import InterviewService
+    asyncio.create_task(
+        InterviewService.generate_interview_questions_async(
+            db=db,
+            interview_id=db_interview.id,
+            resume_data=resume_data,
+            job_description=interview_data.job_description,
+            num_questions=10
+        )
+    )
+    print(f"[创建面试] 已启动后台任务生成面试问题")
+
     # 构建响应数据，将 JSON 字符串解析为 Python 对象
     response_data = {
         "id": db_interview.id,
@@ -123,7 +108,7 @@ async def create_interview(
 
     return ApiResponse(
         code=201,
-        message="面试创建成功",
+        message="面试创建成功，正在生成面试问题，请稍后刷新查看",
         data=InterviewResponse(**response_data)
     )
 
@@ -164,6 +149,61 @@ async def get_interview(
         code=200,
         message="获取成功",
         data=InterviewResponse(**response_data)
+    )
+
+
+@router.get("/{interview_id}/status")
+async def get_interview_status(
+    interview_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """获取面试问题生成状态"""
+    from app.schemas.common import ApiResponse
+
+    interview = db.query(Interview).filter(
+        Interview.id == interview_id,
+        Interview.user_id == current_user.id
+    ).first()
+    if not interview:
+        raise HTTPException(
+            status_code=404,
+            detail="面试不存在"
+        )
+
+    # 解析错误信息
+    error_info = None
+    if interview.generation_error:
+        try:
+            error_info = json.loads(interview.generation_error)
+        except:
+            error_info = {"error": interview.generation_error}
+
+    # 判断生成状态
+    if interview.status == InterviewStatus.initializing:
+        generation_status = "generating"
+        message = "正在生成面试问题，请稍后..."
+    elif interview.questions:
+        generation_status = "completed"
+        message = "面试问题已生成"
+    elif error_info:
+        generation_status = "failed"
+        message = "面试问题生成失败"
+    else:
+        generation_status = "unknown"
+        message = "状态未知"
+
+    return ApiResponse(
+        code=200,
+        message="获取成功",
+        data={
+            "interview_id": interview.id,
+            "status": interview.status,
+            "generation_status": generation_status,
+            "message": message,
+            "has_questions": interview.questions is not None,
+            "error": error_info
+        }
     )
 
 
@@ -326,7 +366,7 @@ async def interview_websocket(
             return
 
         # 更新面试状态为进行中
-        interview.status = InterviewStatus.IN_PROGRESS
+        interview.status = InterviewStatus.in_progress
         db.commit()
 
         # 发送第一个问题并记录
@@ -421,7 +461,7 @@ async def interview_websocket(
                         })
                     else:
                         # 面试结束
-                        interview.status = InterviewStatus.COMPLETED
+                        interview.status = InterviewStatus.completed
                         db.commit()
                         await websocket.send_json({
                             "type": "end",
@@ -431,14 +471,14 @@ async def interview_websocket(
 
             elif data.get("type") == "end":
                 # 用户主动结束面试
-                interview.status = InterviewStatus.COMPLETED
+                interview.status = InterviewStatus.completed
                 db.commit()
                 break
 
     except WebSocketDisconnect:
         # 连接断开
-        if interview.status == InterviewStatus.IN_PROGRESS:
-            interview.status = InterviewStatus.COMPLETED
+        if interview.status == InterviewStatus.in_progress:
+            interview.status = InterviewStatus.completed
             db.commit()
     except Exception as e:
         await websocket.close(code=4000, reason=str(e))

@@ -20,10 +20,9 @@
     - feedback: 对该问题的评价
     - strengths: 优点列表
     - improvements: 需要改进的地方
-- recommended_resources: 推荐的学习资源列表
+- recommended_resources: 推荐的学习资源列表（仅提供资源类型和标题，系统会自动匹配真实链接）
     - type: 资源类型（article、video、course等）
-    - title: 资源标题
-    - url: 资源链接（可选）
+    - title: 资源标题（描述需要学习的内容，例如"面试技巧提升"、"技术面试准备"等）
 
 示例：
 {{
@@ -42,8 +41,9 @@
     "recommended_resources": [
         {{
             "type": "article",
-            "title": "如何进行有效的项目经验描述",
-            "url": "https://example.com/article"
+            "title": "如何进行有效的项目经验描述"
         }}
     ]
 }}
+
+注意：recommended_resources中的url字段将由系统自动填充，不需要在生成时提供。

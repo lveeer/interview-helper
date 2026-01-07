@@ -1,7 +1,10 @@
 from typing import Dict, Any, List
 import json
+import asyncio
+from sqlalchemy.orm import Session
 from app.services.llm_service import get_llm
 from app.utils.prompt_loader import PromptLoader
+from app.models.interview import Interview, InterviewStatus
 
 
 class InterviewService:
@@ -207,3 +210,54 @@ class InterviewService:
                 "strengths": ["回答了问题"],
                 "improvements": ["可以更详细", "可以增加实例"]
             }
+
+    @staticmethod
+    async def generate_interview_questions_async(
+        db: Session,
+        interview_id: int,
+        resume_data: Dict[str, Any],
+        job_description: str,
+        num_questions: int = 10
+    ):
+        """
+        异步生成面试问题并在完成后更新数据库
+
+        Args:
+            db: 数据库会话
+            interview_id: 面试ID
+            resume_data: 简历数据
+            job_description: 岗位描述
+            num_questions: 问题数量
+        """
+        try:
+            # 生成面试问题
+            questions = await InterviewService.generate_interview_questions(
+                resume_data,
+                job_description,
+                num_questions
+            )
+
+            # 更新数据库
+            interview = db.query(Interview).filter(Interview.id == interview_id).first()
+            if interview:
+                interview.questions = json.dumps(questions)
+                interview.status = InterviewStatus.pending
+                interview.generation_error = None
+                db.commit()
+                print(f"[异步生成] 面试 {interview_id} 问题生成成功，共 {len(questions)} 个问题")
+            else:
+                print(f"[异步生成] 面试 {interview_id} 不存在")
+
+        except Exception as e:
+            # 生成失败，记录错误信息
+            interview = db.query(Interview).filter(Interview.id == interview_id).first()
+            if interview:
+                interview.status = InterviewStatus.pending
+                interview.generation_error = json.dumps({
+                    "error": str(e),
+                    "type": type(e).__name__
+                }, ensure_ascii=False)
+                db.commit()
+                print(f"[异步生成] 面试 {interview_id} 问题生成失败: {e}")
+            else:
+                print(f"[异步生成] 面试 {interview_id} 不存在")

@@ -37,3 +37,64 @@ export const deleteResume = (id) => {
     method: 'delete'
   })
 }
+
+// 分析简历
+export const analyzeResume = (id) => {
+  return request({
+    url: `/resume/${id}/analyze`,
+    method: 'post'
+  })
+}
+
+// 获取优化建议
+export const getOptimizationSuggestions = (id) => {
+  return request({
+    url: `/resume/${id}/suggestions`,
+    method: 'get'
+  })
+}
+
+// 应用优化建议
+export const applyOptimization = (id, suggestions) => {
+  return request({
+    url: `/resume/${id}/optimize`,
+    method: 'post',
+    data: { suggestions }
+  })
+}
+
+// 获取优化历史
+export const getOptimizationHistory = (id) => {
+  return request({
+    url: `/resume/${id}/optimization-history`,
+    method: 'get'
+  })
+}
+
+// 导出优化后的简历
+export const exportOptimizedResume = (id, format = 'pdf') => {
+  return request({
+    url: `/resume/${id}/export`,
+    method: 'get',
+    params: { format },
+    responseType: 'blob'
+  })
+}
+
+// 比较简历版本
+export const compareResumeVersions = (id, version1, version2) => {
+  return request({
+    url: `/resume/${id}/compare`,
+    method: 'get',
+    params: { version1, version2 }
+  })
+}
+
+// 恢复到历史版本
+export const restoreResumeVersion = (id, version) => {
+  return request({
+    url: `/resume/${id}/restore`,
+    method: 'post',
+    data: { version }
+  })
+}

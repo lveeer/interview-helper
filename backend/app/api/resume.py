@@ -1,11 +1,22 @@
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Query
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 from app.core.database import get_db
 from app.models.user import User
 from app.models.resume import Resume
-from app.schemas.resume import ResumeResponse
+from app.schemas.resume import (
+    ResumeResponse,
+    OptimizationSuggestion,
+    OptimizationApplyRequest,
+    OptimizationApplyResponse,
+    OptimizationHistoryItem,
+    ResumeCompareResult,
+    ResumeRestoreRequest,
+    ResumeRestoreResponse
+)
 from app.api.auth import get_current_user
+from app.services.resume_optimization_service import ResumeOptimizationService
 import os
 import json
 from config import settings
@@ -161,7 +172,7 @@ async def delete_resume(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="简历不存在"
-    )
+        )
     # 删除文件
     if os.path.exists(resume.file_path):
         os.remove(resume.file_path)
@@ -169,3 +180,333 @@ async def delete_resume(
     db.delete(resume)
     db.commit()
     return SuccessResponse()
+
+
+# ========== 简历优化相关 API ==========
+
+@router.post("/{resume_id}/analyze")
+async def analyze_resume(
+    resume_id: int,
+    force_refresh: bool = Query(False, description="是否强制重新分析"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """分析简历，生成多维度评分和分析报告"""
+    from app.schemas.common import ApiResponse
+
+    # 验证简历所有权
+    resume = db.query(Resume).filter(
+        Resume.id == resume_id,
+        Resume.user_id == current_user.id
+    ).first()
+    if not resume:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="简历不存在"
+        )
+
+    # 获取 LLM 服务
+    from app.services.llm_service import get_iflow_llm
+    llm_service = await get_iflow_llm()
+
+    # 分析简历
+    try:
+        analysis_result = await ResumeOptimizationService.analyze_resume(
+            db=db,
+            resume_id=resume_id,
+            llm_service=llm_service,
+            force_refresh=force_refresh
+        )
+
+        return ApiResponse(
+            code=200,
+            message="分析成功",
+            data=analysis_result
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"分析失败: {str(e)}"
+        )
+
+
+@router.get("/{resume_id}/suggestions")
+async def get_optimization_suggestions(
+    resume_id: int,
+    force_refresh: bool = Query(False, description="是否强制重新生成"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """获取简历优化建议"""
+    from app.schemas.common import ApiResponse
+
+    # 验证简历所有权
+    resume = db.query(Resume).filter(
+        Resume.id == resume_id,
+        Resume.user_id == current_user.id
+    ).first()
+    if not resume:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="简历不存在"
+        )
+
+    # 获取 LLM 服务
+    from app.services.llm_service import get_iflow_llm
+    llm_service = await get_iflow_llm()
+
+    # 生成优化建议
+    try:
+        suggestions = await ResumeOptimizationService.generate_suggestions(
+            db=db,
+            resume_id=resume_id,
+            llm_service=llm_service,
+            force_refresh=force_refresh
+        )
+
+        return ApiResponse(
+            code=200,
+            message="获取成功",
+            data=suggestions
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"获取优化建议失败: {str(e)}"
+        )
+
+
+@router.post("/{resume_id}/optimize")
+async def apply_optimizations(
+    resume_id: int,
+    request: OptimizationApplyRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """应用优化建议到简历"""
+    from app.schemas.common import ApiResponse
+
+    # 验证简历所有权
+    resume = db.query(Resume).filter(
+        Resume.id == resume_id,
+        Resume.user_id == current_user.id
+    ).first()
+    if not resume:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="简历不存在"
+        )
+
+    # 应用优化建议
+    try:
+        result = ResumeOptimizationService.apply_optimizations(
+            db=db,
+            resume_id=resume_id,
+            suggestions=[s.model_dump() for s in request.suggestions]
+        )
+
+        return ApiResponse(
+            code=200,
+            message="优化应用成功",
+            data=result
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"应用优化失败: {str(e)}"
+        )
+
+
+@router.get("/{resume_id}/optimization-history")
+async def get_optimization_history(
+    resume_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """获取简历优化历史"""
+    from app.schemas.common import ApiResponse
+
+    # 验证简历所有权
+    resume = db.query(Resume).filter(
+        Resume.id == resume_id,
+        Resume.user_id == current_user.id
+    ).first()
+    if not resume:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="简历不存在"
+        )
+
+    # 获取优化历史
+    try:
+        history = ResumeOptimizationService.get_optimization_history(
+            db=db,
+            resume_id=resume_id
+        )
+
+        return ApiResponse(
+            code=200,
+            message="获取成功",
+            data=history
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"获取优化历史失败: {str(e)}"
+        )
+
+
+@router.get("/{resume_id}/export")
+async def export_resume(
+    resume_id: int,
+    format: str = Query("pdf", description="导出格式：pdf 或 docx"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """导出优化后的简历"""
+    # 验证简历所有权
+    resume = db.query(Resume).filter(
+        Resume.id == resume_id,
+        Resume.user_id == current_user.id
+    ).first()
+    if not resume:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="简历不存在"
+        )
+
+    # 验证导出格式
+    if format not in ["pdf", "docx"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="不支持的导出格式，仅支持 pdf 和 docx"
+        )
+
+    # 检查文件是否存在
+    if not os.path.exists(resume.file_path):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="简历文件不存在"
+        )
+
+    # 返回文件
+    file_name = f"optimized_resume_{resume.current_version}.{format}"
+    return FileResponse(
+        path=resume.file_path,
+        filename=file_name,
+        media_type="application/pdf" if format == "pdf" else "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    )
+
+
+@router.get("/{resume_id}/compare")
+async def compare_resume_versions(
+    resume_id: int,
+    version1: str = Query(..., description="版本1"),
+    version2: str = Query(..., description="版本2"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """比较两个版本的简历差异"""
+    from app.schemas.common import ApiResponse
+
+    # 验证简历所有权
+    resume = db.query(Resume).filter(
+        Resume.id == resume_id,
+        Resume.user_id == current_user.id
+    ).first()
+    if not resume:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="简历不存在"
+        )
+
+    # 比较版本
+    try:
+        result = ResumeOptimizationService.compare_versions(
+            db=db,
+            resume_id=resume_id,
+            version1=version1,
+            version2=version2
+        )
+
+        return ApiResponse(
+            code=200,
+            message="对比成功",
+            data=result
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"版本对比失败: {str(e)}"
+        )
+
+
+@router.post("/{resume_id}/restore")
+async def restore_resume_version(
+    resume_id: int,
+    request: ResumeRestoreRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """恢复简历到指定历史版本"""
+    from app.schemas.common import ApiResponse
+
+    # 验证简历所有权
+    resume = db.query(Resume).filter(
+        Resume.id == resume_id,
+        Resume.user_id == current_user.id
+    ).first()
+    if not resume:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="简历不存在"
+        )
+
+    # 恢复版本
+    try:
+        result = ResumeOptimizationService.restore_version(
+            db=db,
+            resume_id=resume_id,
+            version=request.version
+        )
+
+        return ApiResponse(
+            code=200,
+            message="恢复成功",
+            data=result
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"恢复失败: {str(e)}"
+        )

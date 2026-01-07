@@ -208,6 +208,7 @@ const viewRecord = (interview) => {
 const getStatusText = (status) => {
   const statusMap = {
     pending: '待开始',
+    initializing: '生成问题中',
     in_progress: '进行中',
     analyzing: '分析中',
     completed: '已完成'
@@ -218,6 +219,7 @@ const getStatusText = (status) => {
 const getStatusType = (status) => {
   const typeMap = {
     pending: 'info',
+    initializing: 'info',
     in_progress: 'warning',
     analyzing: 'info',
     completed: 'success'

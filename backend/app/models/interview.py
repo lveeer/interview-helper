@@ -6,9 +6,10 @@ from app.core.database import Base
 
 
 class InterviewStatus(str, enum.Enum):
-    PENDING = "pending"
-    IN_PROGRESS = "in_progress"
-    COMPLETED = "completed"
+    initializing = "initializing"
+    pending = "pending"
+    in_progress = "in_progress"
+    completed = "completed"
 
 
 class Interview(Base):
@@ -19,7 +20,7 @@ class Interview(Base):
     resume_id = Column(Integer, ForeignKey("resumes.id"), nullable=False)
     job_description = Column(Text)  # JD
 
-    status = Column(Enum(InterviewStatus), default=InterviewStatus.PENDING)
+    status = Column(Enum(InterviewStatus), default=InterviewStatus.pending)
     total_score = Column(Integer, default=0)
 
     # 面试问题（JSON 格式）
@@ -31,6 +32,9 @@ class Interview(Base):
     evaluation_report = Column(Text, nullable=True)
     # 评估报告生成时间
     evaluation_generated_at = Column(DateTime(timezone=True), nullable=True)
+
+    # 问题生成错误信息（JSON 格式）
+    generation_error = Column(Text, nullable=True)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())

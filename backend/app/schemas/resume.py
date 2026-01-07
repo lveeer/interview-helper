@@ -28,6 +28,7 @@ class ResumeResponse(BaseModel):
     skills: Optional[List[str]] = None
     projects: Optional[List[Dict[str, Any]]] = None
     highlights: Optional[List[str]] = None
+    current_version: Optional[str] = None
     created_at: datetime
 
     @field_validator('personal_info', mode='before')
@@ -110,3 +111,111 @@ class ResumeResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+# 简历分析相关 Schema
+class PersonalAnalysis(BaseModel):
+    status: str
+    message: str
+    included: List[str] = []
+    missing: List[str] = []
+
+
+class EducationAnalysis(BaseModel):
+    status: str
+    message: str
+    suggestions: Optional[str] = None
+
+
+class ExperienceAnalysis(BaseModel):
+    status: str
+    message: str
+    issues: Optional[str] = None
+    suggestions: Optional[str] = None
+
+
+class SkillsAnalysis(BaseModel):
+    status: str
+    message: str
+    hard_skills: List[str] = []
+    soft_skills: List[str] = []
+    suggestions: Optional[str] = None
+
+
+class ResumeAnalysisResult(BaseModel):
+    overall_score: int
+    content_score: int
+    match_score: int
+    clarity_score: int
+    strengths: List[str]
+    weaknesses: List[str]
+    personal_analysis: PersonalAnalysis
+    education_analysis: EducationAnalysis
+    experience_analysis: ExperienceAnalysis
+    skills_analysis: SkillsAnalysis
+
+
+# 简历优化建议相关 Schema
+class OptimizationSuggestion(BaseModel):
+    id: int
+    priority: str  # high, medium, low
+    title: str
+    description: str
+    before: Optional[str] = None
+    after: Optional[str] = None
+    reason: Optional[str] = None
+
+
+class OptimizationSuggestionCreate(BaseModel):
+    id: int
+    priority: str
+    title: str
+    description: str
+    before: Optional[str] = None
+    after: Optional[str] = None
+    reason: Optional[str] = None
+
+
+class OptimizationApplyRequest(BaseModel):
+    suggestions: List[OptimizationSuggestionCreate]
+
+
+class OptimizationApplyResponse(BaseModel):
+    version: str
+    optimized_at: datetime
+    applied_count: int
+
+
+# 简历优化历史相关 Schema
+class OptimizationHistoryItem(BaseModel):
+    id: int
+    version: str
+    version_before: Optional[str] = None
+    version_after: Optional[str] = None
+    title: str
+    description: Optional[str] = None
+    status: str
+    created_at: datetime
+
+
+# 简历版本比较相关 Schema
+class DiffItem(BaseModel):
+    type: str  # added, deleted, modified
+    section: str
+    content: Dict[str, Any]
+
+
+class ResumeCompareResult(BaseModel):
+    before: str
+    after: str
+    diff: List[DiffItem]
+
+
+# 简历恢复相关 Schema
+class ResumeRestoreRequest(BaseModel):
+    version: str
+
+
+class ResumeRestoreResponse(BaseModel):
+    version: str
+    restored_at: datetime

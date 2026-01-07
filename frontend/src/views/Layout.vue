@@ -61,6 +61,10 @@
           <el-icon><Document /></el-icon>
           <span>简历管理</span>
         </el-menu-item>
+        <el-menu-item index="/resume-optimize">
+          <el-icon><MagicStick /></el-icon>
+          <span>简历优化</span>
+        </el-menu-item>
         <el-menu-item index="/job-match">
           <el-icon><TrendCharts /></el-icon>
           <span>岗位匹配</span>

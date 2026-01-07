@@ -41,6 +41,7 @@ class EvaluationService:
             result = json.loads(response)
             return result
         except Exception as e:
+            print(f"生成评估报告失败: {e}")
             # 默认返回示例报告
             return {
                 "total_score": 70,
@@ -58,8 +59,7 @@ class EvaluationService:
                 "recommended_resources": [
                     {
                         "type": "article",
-                        "title": "面试技巧提升指南",
-                        "url": "https://example.com/article"
+                        "title": "面试技巧提升指南"
                     }
                 ]
             }

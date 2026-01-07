@@ -68,6 +68,33 @@
             @keyup.ctrl.enter="sendAnswer"
           ></textarea>
           <div class="input-actions">
+            <div class="voice-controls">
+              <!-- 语音输入按钮 -->
+              <button
+                class="voice-button"
+                :class="{ recording: isRecording }"
+                :disabled="isTyping || !speechSupported.recognition"
+                @click="toggleVoiceInput"
+                :title="isRecording ? '停止录音' : '开始语音输入'"
+              >
+                <el-icon>
+                  <component :is="isRecording ? 'Microphone' : 'Microphone'" />
+                </el-icon>
+                <span v-if="isRecording">录音中...</span>
+              </button>
+
+              <!-- 语音输出开关 -->
+              <button
+                class="voice-button"
+                :class="{ active: voiceOutputEnabled }"
+                :disabled="!speechSupported.synthesis"
+                @click="toggleVoiceOutput"
+                :title="voiceOutputEnabled ? '关闭语音输出' : '开启语音输出'"
+              >
+                <el-icon><Headset /></el-icon>
+                <span>{{ voiceOutputEnabled ? '语音开' : '语音关' }}</span>
+              </button>
+            </div>
             <button
               class="send-button"
               :class="{ loading: isTyping }"
@@ -88,7 +115,8 @@
 import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { User, UserFilled, Promotion } from '@element-plus/icons-vue'
+import { User, UserFilled, Promotion, Microphone, Headset } from '@element-plus/icons-vue'
+import speechService from '@/utils/speech'
 
 const route = useRoute()
 const router = useRouter()
@@ -101,6 +129,12 @@ const chatContainer = ref(null)
 let websocket = null
 const isEnding = ref(false) // 标记是否正在结束面试
 
+// 语音相关状态
+const speechSupported = speechService.checkSupport()
+const isRecording = ref(false) // 是否正在录音
+const voiceOutputEnabled = ref(false) // 是否启用语音输出
+const interimTranscript = ref('') // 临时识别结果
+
 onMounted(() => {
   connectWebSocket()
 })
@@ -109,6 +143,8 @@ onUnmounted(() => {
   if (websocket) {
     websocket.close()
   }
+  // 清理语音资源
+  speechService.destroy()
 })
 
 const connectWebSocket = () => {
@@ -126,11 +162,15 @@ const connectWebSocket = () => {
 
     if (data.type === 'question' || data.type === 'followup') {
       isTyping.value = false
+      const question = data.data.question
       messages.value.push({
         role: 'interviewer',
-        content: data.data.question
+        content: question
       })
       scrollToBottom()
+
+      // 自动播放面试官问题的语音
+      speakText(question)
     } else if (data.type === 'end') {
       console.log('收到结束消息，准备跳转')
       isTyping.value = false
@@ -230,6 +270,114 @@ const scrollToBottom = () => {
       chatContainer.value.scrollTop = chatContainer.value.scrollHeight
     }
   })
+}
+
+// ===== 语音功能 =====
+
+/**
+ * 切换语音输入
+ */
+const toggleVoiceInput = async () => {
+  if (!speechSupported.recognition) {
+    ElMessage.error('您的浏览器不支持语音识别功能')
+    return
+  }
+
+  if (isRecording.value) {
+    // 停止录音
+    stopVoiceInput()
+  } else {
+    // 开始录音
+    try {
+      await speechService.initRecognition({
+        lang: 'zh-CN',
+        continuous: false,
+        interimResults: true
+      })
+
+      isRecording.value = true
+      interimTranscript.value = ''
+      ElMessage.info('开始录音，请说出你的回答...')
+
+      speechService.startRecognition({
+        onStart: () => {
+          console.log('语音识别已启动')
+        },
+        onResult: (text) => {
+          // 最终识别结果
+          userAnswer.value = text
+          interimTranscript.value = ''
+          stopVoiceInput()
+        },
+        onInterim: (text) => {
+          // 临时识别结果
+          interimTranscript.value = text
+          userAnswer.value = text
+        },
+        onEnd: () => {
+          if (isRecording.value) {
+            stopVoiceInput()
+          }
+        },
+        onError: (error) => {
+          console.error('语音识别错误:', error)
+          ElMessage.error('语音识别失败: ' + error)
+          stopVoiceInput()
+        }
+      })
+    } catch (error) {
+      console.error('初始化语音识别失败:', error)
+      ElMessage.error('无法启动语音识别')
+      isRecording.value = false
+    }
+  }
+}
+
+/**
+ * 停止语音输入
+ */
+const stopVoiceInput = () => {
+  if (isRecording.value) {
+    speechService.stopRecognition()
+    isRecording.value = false
+    interimTranscript.value = ''
+  }
+}
+
+/**
+ * 切换语音输出
+ */
+const toggleVoiceOutput = () => {
+  if (!speechSupported.synthesis) {
+    ElMessage.error('您的浏览器不支持语音合成功能')
+    return
+  }
+
+  voiceOutputEnabled.value = !voiceOutputEnabled.value
+  ElMessage.success(voiceOutputEnabled.value ? '语音输出已开启' : '语音输出已关闭')
+}
+
+/**
+ * 播放语音
+ * @param {string} text - 要播放的文本
+ */
+const speakText = (text) => {
+  if (!voiceOutputEnabled.value || !text || !speechSupported.synthesis) {
+    return
+  }
+
+  try {
+    speechService.speak(text, {
+      lang: 'zh-CN',
+      rate: 1,
+      pitch: 1,
+      volume: 1
+    }).catch(error => {
+      console.error('语音播放失败:', error)
+    })
+  } catch (error) {
+    console.error('语音播放错误:', error)
+  }
 }
 </script>
 
@@ -541,7 +689,73 @@ const scrollToBottom = () => {
 /* ===== 输入操作按钮 ===== */
 .input-actions {
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+}
+
+/* ===== 语音控制按钮 ===== */
+.voice-controls {
+  display: flex;
+  gap: 8px;
+}
+
+.voice-button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: #f5f5f7;
+  color: #1d1d1f;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.voice-button:hover:not(:disabled) {
+  background: #ebebeb;
+  border-color: rgba(0, 0, 0, 0.15);
+}
+
+.voice-button:active:not(:disabled) {
+  opacity: 0.8;
+}
+
+.voice-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.voice-button.recording {
+  background: #FF3B30;
+  color: white;
+  border-color: #FF3B30;
+  animation: recordingPulse 1.5s infinite;
+}
+
+.voice-button.active {
+  background: #34C759;
+  color: white;
+  border-color: #34C759;
+}
+
+@keyframes recordingPulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.voice-button .el-icon {
+  font-size: 14px;
+}
+
+.voice-button span {
+  font-size: 12px;
 }
 
 .send-button {
@@ -630,6 +844,15 @@ const scrollToBottom = () => {
     width: 100%;
     padding: 10px 16px;
   }
+
+  .voice-controls {
+    flex: 1;
+  }
+
+  .voice-button {
+    flex: 1;
+    justify-content: center;
+  }
 }
 
 /* ===== 深色模式 ===== */
@@ -707,6 +930,29 @@ const scrollToBottom = () => {
     background: #3a3a3c;
     border-color: #0A84FF;
     box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.2);
+  }
+
+  .voice-button {
+    background: #3a3a3c;
+    color: #f5f5f7;
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+
+  .voice-button:hover:not(:disabled) {
+    background: #48484a;
+    border-color: rgba(255, 255, 255, 0.2);
+  }
+
+  .voice-button.recording {
+    background: #FF453A;
+    color: white;
+    border-color: #FF453A;
+  }
+
+  .voice-button.active {
+    background: #30D158;
+    color: white;
+    border-color: #30D158;
   }
 }
 </style>

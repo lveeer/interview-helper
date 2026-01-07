@@ -34,6 +34,12 @@ const routes = [
         meta: { title: '简历管理' }
       },
       {
+        path: '/resume-optimize',
+        name: 'ResumeOptimize',
+        component: () => import('@/views/ResumeOptimize.vue'),
+        meta: { title: '简历优化' }
+      },
+      {
         path: '/job-match',
         name: 'JobMatch',
         component: () => import('@/views/JobMatch.vue'),
