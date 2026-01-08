@@ -25,7 +25,8 @@ class ResumeOptimizationService:
         db: Session,
         resume_id: int,
         llm_service,
-        force_refresh: bool = False
+        force_refresh: bool = False,
+        jd: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         分析简历，生成多维度评分和分析报告
@@ -35,10 +36,15 @@ class ResumeOptimizationService:
             resume_id: 简历ID
             llm_service: LLM 服务实例
             force_refresh: 是否强制重新分析
+            jd: 职位描述（可选），用于针对性分析
 
         Returns:
             分析结果字典
         """
+        logger.info(f"开始分析简历 {resume_id}, force_refresh={force_refresh}, jd={bool(jd)}")
+        if jd:
+            logger.info(f"JD 内容: {jd[:100]}...")
+
         # 获取简历
         resume = db.query(Resume).filter(Resume.id == resume_id).first()
         if not resume:
@@ -46,11 +52,13 @@ class ResumeOptimizationService:
 
         # 如果已有缓存且不强制刷新，直接返回
         if resume.analysis_result and not force_refresh:
+            logger.info(f"使用缓存的分析结果")
             try:
                 return json.loads(resume.analysis_result)
             except json.JSONDecodeError:
                 pass
 
+        logger.info(f"准备使用 LLM 分析简历")
         # 准备简历数据
         resume_data = {
             "personal_info": json.loads(resume.personal_info) if resume.personal_info else {},
@@ -61,8 +69,11 @@ class ResumeOptimizationService:
             "highlights": json.loads(resume.highlights) if resume.highlights else []
         }
 
+        logger.info(f"简历数据准备完成，技能数量: {len(resume_data.get('skills', []))}")
+
         # 使用 LLM 分析简历
-        analysis_prompt = ResumeOptimizationService._build_analysis_prompt(resume_data)
+        analysis_prompt = ResumeOptimizationService._build_analysis_prompt(resume_data, jd)
+        logger.info(f"分析提示词已构建，长度: {len(analysis_prompt)}")
 
         try:
             analysis_response = await llm_service.generate_text(
@@ -71,10 +82,15 @@ class ResumeOptimizationService:
                 max_tokens=2000
             )
 
+            logger.info(f"LLM 原始响应: {analysis_response[:500]}...")
+
             # 解析 LLM 响应
             try:
                 analysis_result = json.loads(analysis_response)
-            except json.JSONDecodeError:
+                logger.info(f"LLM JSON 解析成功，综合评分: {analysis_result.get('overall_score', 0)}")
+            except json.JSONDecodeError as e:
+                logger.error(f"LLM JSON 解析失败: {e}")
+                logger.error(f"LLM 原始响应: {analysis_response}")
                 # 如果解析失败，使用基础分析
                 analysis_result = ResumeOptimizationService._basic_analysis(resume_data)
 
@@ -94,10 +110,106 @@ class ResumeOptimizationService:
             return analysis_result
 
     @staticmethod
-    def _build_analysis_prompt(resume_data: Dict[str, Any]) -> str:
+    def _build_analysis_prompt(resume_data: Dict[str, Any], jd: Optional[str] = None) -> str:
         """构建简历分析的提示词"""
-        return f"""
+        if jd:
+            # 有 JD 时的针对性分析提示词
+            return f"""
+你是一位专业的简历分析师。请仔细分析以下简历与目标职位描述（JD）的匹配度，并以JSON格式返回详细的分析结果。
+
+【目标职位描述 (JD)】
+{jd}
+
+【简历信息】
+姓名: {resume_data['personal_info'].get('name', '未知')}
+邮箱: {resume_data['personal_info'].get('email', '未知')}
+电话: {resume_data['personal_info'].get('phone', '未知')}
+
+教育背景:
+{json.dumps(resume_data['education'], ensure_ascii=False, indent=2)}
+
+工作经历:
+{json.dumps(resume_data['experience'], ensure_ascii=False, indent=2)}
+
+项目经历:
+{json.dumps(resume_data['projects'], ensure_ascii=False, indent=2)}
+
+技能列表:
+{', '.join(resume_data['skills'])}
+
+【分析要求】
+1. **必须仔细对比 JD 和简历**，逐项分析匹配情况
+2. **在 skills_analysis 中必须包含以下字段**：
+   - jd_required_skills: JD明确要求的技能列表
+   - resume_matched_skills: 简历中匹配JD要求的技能
+   - resume_missing_skills: JD要求但简历缺失的技能
+   - match_details: 匹配度详细说明（如"5/8技能匹配"）
+3. **在 experience_analysis 中必须包含**：
+   - jd_experience_requirements: JD对经验的要求
+   - resume_experience_match: 简历经验是否满足JD要求
+4. **在 strengths 中优先列出与JD高度匹配的技能和经验**
+5. **在 weaknesses 中必须明确列出JD要求但简历缺失的技能、经验**
+6. **match_score 必须基于实际的匹配情况计算**（技能匹配数/总技能数 × 60% + 经验匹配度 × 40%）
+
+请按以下JSON格式返回分析结果：
+{{
+    "overall_score": 0-100,
+    "content_score": 0-100,
+    "match_score": 0-100,
+    "clarity_score": 0-100,
+    "strengths": ["优势1（必须包含与JD匹配的具体技能和经验）", "优势2"],
+    "weaknesses": ["不足1（必须包含JD要求但简历缺失的技能）", "不足2"],
+    "personal_analysis": {{
+        "status": "good/warning/error",
+        "message": "分析说明",
+        "included": ["已包含项"],
+        "missing": ["缺失项"]
+    }},
+    "education_analysis": {{
+        "status": "good/warning/error",
+        "message": "分析说明",
+        "suggestions": "改进建议"
+    }},
+    "experience_analysis": {{
+        "status": "good/warning/error",
+        "message": "分析说明（必须说明是否满足JD经验要求）",
+        "jd_experience_requirements": "JD对经验的具体要求",
+        "resume_experience_match": "简历经验匹配情况说明",
+        "issues": "存在问题",
+        "suggestions": "针对JD的改进建议"
+    }},
+    "skills_analysis": {{
+        "status": "good/warning/error",
+        "message": "分析说明",
+        "jd_required_skills": ["JD要求技能1", "JD要求技能2"],
+        "resume_matched_skills": ["简历匹配技能1", "简历匹配技能2"],
+        "resume_missing_skills": ["缺失技能1", "缺失技能2"],
+        "match_details": "匹配度详细说明（如：5/8技能匹配，缺失MyBatis、分布式经验等）",
+        "hard_skills": ["硬技能1", "硬技能2"],
+        "soft_skills": ["软技能1", "软技能2"],
+        "suggestions": "针对JD的技能改进建议"
+    }}
+}}
+
+评分标准：
+- overall_score: 综合评分 = (content_score + match_score + clarity_score) / 3
+- content_score: 内容完整性（个人信息、教育、工作经历、技能）
+- match_score: **与JD匹配度** = (匹配技能数/JD要求技能数 × 60) + (经验匹配度 × 40)
+- clarity_score: 表达清晰度
+
+【重要提醒】
+- 必须在 skills_analysis 中明确列出 JD 要求的技能和简历的匹配情况
+- 必须在 experience_analysis 中说明简历经验是否满足 JD 要求
+- 必须在 weaknesses 中明确指出 JD 要求但简历缺失的内容
+- 所有建议必须针对 JD，提供具体的改进方向
+
+请确保返回的是合法的JSON格式，不要包含任何其他文字说明。
+"""
+        else:
+            # 无 JD 时的通用分析提示词
+            return f"""
 请分析以下简历，从多个维度评估简历质量，并以JSON格式返回分析结果。
+请从通用角度评估简历质量。
 
 简历信息：
 姓名: {resume_data['personal_info'].get('name', '未知')}
@@ -301,7 +413,8 @@ class ResumeOptimizationService:
         db: Session,
         resume_id: int,
         llm_service,
-        force_refresh: bool = False
+        force_refresh: bool = False,
+        jd: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         """
         生成简历优化建议
@@ -311,6 +424,7 @@ class ResumeOptimizationService:
             resume_id: 简历ID
             llm_service: LLM 服务实例
             force_refresh: 是否强制重新生成
+            jd: 职位描述（可选），用于针对性优化
 
         Returns:
             优化建议列表
@@ -357,7 +471,7 @@ class ResumeOptimizationService:
                 pass
 
         # 使用 LLM 生成优化建议
-        suggestions_prompt = ResumeOptimizationService._build_suggestions_prompt(resume_data, analysis_result)
+        suggestions_prompt = ResumeOptimizationService._build_suggestions_prompt(resume_data, analysis_result, jd)
 
         try:
             suggestions_response = await llm_service.generate_text(
@@ -423,10 +537,13 @@ class ResumeOptimizationService:
             return suggestions
 
     @staticmethod
-    def _build_suggestions_prompt(resume_data: Dict[str, Any], analysis_result: Dict[str, Any]) -> str:
+    def _build_suggestions_prompt(resume_data: Dict[str, Any], analysis_result: Dict[str, Any], jd: Optional[str] = None) -> str:
         """构建优化建议生成的提示词"""
+        jd_info = f"\n目标职位描述 (JD):\n{jd}\n\n请特别关注简历与该职位的匹配度，提供针对性的优化建议。\n" if jd else ""
+
         return f"""
 请分析以下简历，生成具体的优化建议，并以JSON格式返回。
+{jd_info if jd else "请从通用角度提供优化建议。"}
 
 简历信息：
 姓名: {resume_data['personal_info'].get('name', '未知')}

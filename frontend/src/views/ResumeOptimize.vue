@@ -10,7 +10,7 @@
       <el-select
         v-model="selectedResumeId"
         placeholder="请选择要优化的简历"
-        style="width: 100%"
+        style="width: 100%; margin-bottom: 15px;"
         @change="handleResumeChange"
       >
         <el-option
@@ -20,7 +20,110 @@
           :value="resume.id"
         />
       </el-select>
+
+      <!-- JD 输入区域 -->
+      <div class="jd-section">
+        <div class="jd-header">
+          <span class="jd-label">职位描述（JD）</span>
+          <el-button
+            v-if="jobDescription"
+            type="text"
+            size="small"
+            @click="clearJD"
+          >
+            清除
+          </el-button>
+        </div>
+        <el-input
+          v-model="jobDescription"
+          type="textarea"
+          :rows="6"
+          placeholder="请输入职位描述（JD），系统将根据 JD 提供针对性的简历分析和优化建议...&#10;&#10;例如：&#10;职位：前端开发工程师&#10;要求：&#10;- 3年以上 Vue.js 开发经验&#10;- 熟悉 TypeScript、ES6&#10;- 有大型项目经验优先&#10;- 良好的团队协作能力"
+          class="jd-input"
+        />
+        <div class="jd-tip">
+          <el-icon><InfoFilled /></el-icon>
+          <span>输入 JD 后，系统会根据职位要求提供更精准的分析和建议</span>
+        </div>
+      </div>
+
+      <!-- 开始分析按钮 -->
+      <div class="analyze-actions">
+        <el-button
+          type="primary"
+          size="large"
+          :disabled="!selectedResumeId"
+          :loading="analyzing"
+          @click="handleAnalyze"
+        >
+          <el-icon><Search /></el-icon>
+          开始分析
+        </el-button>
+      </div>
     </el-card>
+
+    <!-- AI 分析加载动画 -->
+    <el-dialog
+      v-model="analyzing"
+      :show-close="false"
+      :close-on-click-modal="false"
+      :close-on-press-escape="false"
+      width="600px"
+      class="ai-analyze-dialog"
+    >
+      <div class="ai-analyze-container">
+        <!-- AI 核心动画 -->
+        <div class="ai-core">
+          <div class="ai-ring ring-1"></div>
+          <div class="ai-ring ring-2"></div>
+          <div class="ai-ring ring-3"></div>
+          <div class="ai-center">
+            <el-icon class="ai-icon"><Search /></el-icon>
+          </div>
+        </div>
+
+        <!-- 扫描线效果 -->
+        <div class="scan-line"></div>
+
+        <!-- 分析状态 -->
+        <div class="analyze-status">
+          <h3 class="status-title">AI 正在分析您的简历</h3>
+          <p class="status-text">{{ currentAnalyzeStep }}</p>
+        </div>
+
+        <!-- 分析进度条 -->
+        <div class="analyze-progress">
+          <div class="progress-bar">
+            <div class="progress-fill" :style="{ width: analyzeProgress + '%' }"></div>
+          </div>
+          <div class="progress-text">{{ analyzeProgress.toFixed(1) }}%</div>
+        </div>
+
+        <!-- 分析步骤 -->
+        <div class="analyze-steps">
+          <div
+            v-for="(step, index) in analyzeSteps"
+            :key="index"
+            class="step-item"
+            :class="{ active: index === currentStepIndex, completed: index < currentStepIndex }"
+          >
+            <div class="step-icon">
+              <el-icon v-if="index < currentStepIndex"><Check /></el-icon>
+              <div v-else class="step-dot"></div>
+            </div>
+            <span class="step-text">{{ step }}</span>
+          </div>
+        </div>
+
+        <!-- 科技装饰 -->
+        <div class="tech-decoration">
+          <div class="tech-line line-1"></div>
+          <div class="tech-line line-2"></div>
+          <div class="tech-line line-3"></div>
+          <div class="tech-line line-4"></div>
+        </div>
+      </div>
+    </el-dialog>
 
     <!-- 简历分析结果 -->
     <el-card v-if="selectedResumeId && analysisResult" class="mb-4">
@@ -343,7 +446,8 @@ import {
   Download,
   InfoFilled,
   SuccessFilled,
-  WarningFilled
+  WarningFilled,
+  Search
 } from '@element-plus/icons-vue'
 import {
   getResumeList,
@@ -366,6 +470,21 @@ const applying = ref(false)
 const activeCollapse = ref(['personal', 'education', 'experience', 'skills'])
 const showCompareDialog = ref(false)
 const compareData = ref({ before: '', after: '' })
+const jobDescription = ref('')
+
+// AI 分析动画相关
+const analyzeProgress = ref(0)
+const currentStepIndex = ref(0)
+const currentAnalyzeStep = ref('')
+const analyzeSteps = [
+  '解析简历结构',
+  '提取关键信息',
+  '分析技能匹配度',
+  '评估内容质量',
+  '生成优化建议'
+]
+let analyzeTimer = null
+let progressTimer = null
 
 const loadResumeList = async () => {
   try {
@@ -381,8 +500,10 @@ const loadResumeList = async () => {
 
 const handleResumeChange = async (resumeId) => {
   if (resumeId) {
-    await handleAnalyze()
-    await loadSuggestions()
+    // 清空之前的分析结果和建议
+    analysisResult.value = null
+    suggestions.value = []
+    // 只加载优化历史
     await loadOptimizationHistory()
   }
 }
@@ -393,12 +514,22 @@ const handleAnalyze = async () => {
     return
   }
 
+  // 开始分析动画
   analyzing.value = true
+  analyzeProgress.value = 0
+  currentStepIndex.value = 0
+  currentAnalyzeStep.value = analyzeSteps[0]
+
+  // 启动进度动画
+  startAnalyzeAnimation()
+
   try {
-    const res = await analyzeResume(selectedResumeId.value)
+    // 当 JD 不为空时，强制刷新分析结果
+    const forceRefresh = !!jobDescription.value
+    const res = await analyzeResume(selectedResumeId.value, jobDescription.value, forceRefresh)
     if (res.code === 200) {
       analysisResult.value = res.data
-      ElMessage.success('分析完成')
+      ElMessage.success(jobDescription.value ? '分析完成（已应用 JD 匹配）' : '分析完成')
     } else {
       ElMessage.error(res.message || '分析失败')
     }
@@ -408,15 +539,53 @@ const handleAnalyze = async () => {
     analysisResult.value = getMockAnalysisResult()
     ElMessage.success('分析完成（演示数据）')
   } finally {
+    // 停止动画，完成进度
+    stopAnalyzeAnimation()
     analyzing.value = false
   }
+}
+
+const startAnalyzeAnimation = () => {
+  // 进度条动画
+  progressTimer = setInterval(() => {
+    if (analyzeProgress.value < 95) {
+      analyzeProgress.value += Math.random() * 3
+      analyzeProgress.value = Math.round(analyzeProgress.value * 10) / 10
+    }
+  }, 300)
+
+  // 步骤切换动画
+  analyzeTimer = setInterval(() => {
+    if (currentStepIndex.value < analyzeSteps.length - 1) {
+      currentStepIndex.value++
+      currentAnalyzeStep.value = analyzeSteps[currentStepIndex.value]
+    }
+  }, 800)
+}
+
+const stopAnalyzeAnimation = () => {
+  // 清除定时器
+  if (analyzeTimer) clearInterval(analyzeTimer)
+  if (progressTimer) clearInterval(progressTimer)
+
+  // 完成动画
+  analyzeProgress.value = 100
+  currentStepIndex.value = analyzeSteps.length - 1
+  currentAnalyzeStep.value = '分析完成！'
+
+  setTimeout(() => {
+    analyzeProgress.value = 0
+    currentStepIndex.value = 0
+  }, 500)
 }
 
 const loadSuggestions = async () => {
   if (!selectedResumeId.value) return
 
   try {
-    const res = await getOptimizationSuggestions(selectedResumeId.value)
+    // 当 JD 不为空时，强制刷新优化建议
+    const forceRefresh = !!jobDescription.value
+    const res = await getOptimizationSuggestions(selectedResumeId.value, jobDescription.value, forceRefresh)
     if (res.code === 200) {
       suggestions.value = (res.data || []).map(s => ({ ...s, selected: false }))
     }
@@ -553,6 +722,11 @@ const formatDate = (dateStr) => {
   return date.toLocaleString('zh-CN')
 }
 
+const clearJD = () => {
+  jobDescription.value = ''
+  ElMessage.info('已清除职位描述')
+}
+
 // Mock 数据
 const getMockAnalysisResult = () => ({
   overall_score: 72,
@@ -656,6 +830,51 @@ onMounted(() => {
 <style scoped>
 .resume-optimize {
   padding: 20px;
+}
+
+.jd-section {
+  margin-top: 15px;
+}
+
+.jd-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.jd-label {
+  font-size: 14px;
+  font-weight: bold;
+  color: #303133;
+}
+
+.jd-input {
+  margin-bottom: 10px;
+}
+
+.jd-tip {
+  display: flex;
+  align-items: center;
+  font-size: 12px;
+  color: #909399;
+  background-color: #f5f7fa;
+  padding: 8px 12px;
+  border-radius: 4px;
+}
+
+.jd-tip .el-icon {
+  margin-right: 5px;
+  color: #409eff;
+}
+
+.analyze-actions {
+  margin-top: 20px;
+  text-align: center;
+}
+
+.analyze-actions .el-button {
+  min-width: 160px;
 }
 
 .mb-4 {
@@ -880,5 +1099,298 @@ onMounted(() => {
   line-height: 1.8;
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+/* AI 分析动画样式 */
+.ai-analyze-dialog :deep(.el-dialog__header) {
+  display: none !important;
+}
+
+.ai-analyze-dialog :deep(.el-dialog) {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.ai-analyze-dialog :deep(.el-dialog__body) {
+  padding: 40px !important;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3) !important;
+}
+
+.ai-analyze-dialog :deep(.el-overlay-dialog) {
+  background: rgba(0, 0, 0, 0.5) !important;
+}
+
+.ai-analyze-container {
+  position: relative;
+  text-align: center;
+  color: white !important;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  min-height: 400px;
+  padding: 20px;
+  border-radius: 12px;
+}
+
+/* AI 核心动画 */
+.ai-core {
+  position: relative;
+  width: 200px;
+  height: 200px;
+  margin: 0 auto 40px;
+}
+
+.ai-ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.6);
+  animation: rotate 3s linear infinite;
+  box-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
+}
+
+.ring-1 {
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  animation-duration: 3s;
+}
+
+.ring-2 {
+  width: 75%;
+  height: 75%;
+  top: 12.5%;
+  left: 12.5%;
+  animation-duration: 2s;
+  animation-direction: reverse;
+}
+
+.ring-3 {
+  width: 50%;
+  height: 50%;
+  top: 25%;
+  left: 25%;
+  animation-duration: 1.5s;
+}
+
+.ai-center {
+  position: absolute;
+  width: 80px;
+  height: 80px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: pulse 2s ease-in-out infinite;
+  box-shadow: 0 0 20px rgba(255, 255, 255, 0.4);
+}
+
+.ai-icon {
+  font-size: 40px;
+  color: white !important;
+  animation: iconRotate 4s linear infinite;
+  filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.8));
+}
+
+@keyframes rotate {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  50% { transform: translate(-50%, -50%) scale(1.1); opacity: 0.8; }
+}
+
+@keyframes iconRotate {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* 扫描线效果 */
+.scan-line {
+  position: absolute;
+  width: 100%;
+  height: 3px;
+  top: 0;
+  left: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 1), transparent);
+  animation: scan 2s linear infinite;
+  box-shadow: 0 0 15px rgba(255, 255, 255, 0.8);
+}
+
+@keyframes scan {
+  0% { top: 0; opacity: 0; }
+  50% { opacity: 1; }
+  100% { top: 100%; opacity: 0; }
+}
+
+/* 分析状态 */
+.analyze-status {
+  margin-bottom: 30px;
+}
+
+.status-title {
+  font-size: 24px;
+  font-weight: bold;
+  margin-bottom: 10px;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  color: white !important;
+}
+
+.status-text {
+  font-size: 16px;
+  opacity: 0.9;
+  animation: fadeInOut 1.5s ease-in-out infinite;
+  color: white !important;
+}
+
+@keyframes fadeInOut {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+/* 进度条 */
+.analyze-progress {
+  display: flex;
+  align-items: center;
+  margin-bottom: 30px;
+  gap: 15px;
+}
+
+.progress-bar {
+  flex: 1;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.3) !important;
+  border-radius: 3px;
+  overflow: hidden;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #00c6fb 0%, #005bea 100%);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+  box-shadow: 0 0 15px rgba(0, 198, 251, 0.8);
+}
+
+.progress-text {
+  font-size: 18px;
+  font-weight: bold;
+  min-width: 50px;
+  color: white !important;
+}
+
+/* 分析步骤 */
+.analyze-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  text-align: left;
+}
+
+.step-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  transition: all 0.3s ease;
+}
+
+.step-item.active {
+  background: rgba(255, 255, 255, 0.2) !important;
+  animation: stepGlow 1.5s ease-in-out infinite;
+  color: white !important;
+}
+
+.step-item.completed {
+  opacity: 0.7;
+  color: white !important;
+}
+
+.step-icon {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.step-dot {
+  width: 8px;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: 50%;
+  animation: dotPulse 1s ease-in-out infinite;
+}
+
+.step-item.active .step-dot {
+  background: #00c6fb !important;
+  box-shadow: 0 0 15px rgba(0, 198, 251, 1) !important;
+}
+
+.step-text {
+  font-size: 14px;
+  flex: 1;
+  color: white !important;
+}
+
+@keyframes stepGlow {
+  0%, 100% { box-shadow: 0 0 5px rgba(255, 255, 255, 0.3); }
+  50% { box-shadow: 0 0 15px rgba(255, 255, 255, 0.6); }
+}
+
+@keyframes dotPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.3); }
+}
+
+/* 科技装饰 */
+.tech-decoration {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.tech-line {
+  position: absolute;
+  width: 2px;
+  height: 100%;
+  background: linear-gradient(180deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+}
+
+.line-1 {
+  left: 10%;
+  animation: techMove 3s ease-in-out infinite;
+}
+
+.line-2 {
+  left: 30%;
+  animation: techMove 3s ease-in-out infinite 0.5s;
+}
+
+.line-3 {
+  right: 30%;
+  animation: techMove 3s ease-in-out infinite 1s;
+}
+
+.line-4 {
+  right: 10%;
+  animation: techMove 3s ease-in-out infinite 1.5s;
+}
+
+@keyframes techMove {
+  0%, 100% { transform: translateY(-100%); opacity: 0; }
+  50% { transform: translateY(100%); opacity: 0.3; }
 }
 </style>

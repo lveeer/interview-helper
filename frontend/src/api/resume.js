@@ -39,18 +39,29 @@ export const deleteResume = (id) => {
 }
 
 // 分析简历
-export const analyzeResume = (id) => {
+export const analyzeResume = (id, jd = null, forceRefresh = false) => {
+  const params = {}
+  if (jd) params.jd = jd
+  if (forceRefresh) params.force_refresh = true
+
   return request({
     url: `/resume/${id}/analyze`,
-    method: 'post'
+    method: 'post',
+    params: Object.keys(params).length > 0 ? params : undefined,
+    timeout: 45000
   })
 }
 
 // 获取优化建议
-export const getOptimizationSuggestions = (id) => {
+export const getOptimizationSuggestions = (id, jd = null, forceRefresh = false) => {
+  const params = {}
+  if (jd) params.jd = jd
+  if (forceRefresh) params.force_refresh = true
+
   return request({
     url: `/resume/${id}/suggestions`,
-    method: 'get'
+    method: 'get',
+    params: Object.keys(params).length > 0 ? params : undefined
   })
 }
 

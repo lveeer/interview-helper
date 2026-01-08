@@ -178,6 +178,7 @@ class OptimizationSuggestionCreate(BaseModel):
 
 class OptimizationApplyRequest(BaseModel):
     suggestions: List[OptimizationSuggestionCreate]
+    jd: Optional[str] = None  # 可选的职位描述（Job Description），用于针对性优化
 
 
 class OptimizationApplyResponse(BaseModel):

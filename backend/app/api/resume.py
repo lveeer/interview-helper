@@ -130,68 +130,22 @@ async def get_resumes(
     )
 
 
-@router.get("/{resume_id}")
-async def get_resume(
-    resume_id: int,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """获取指定简历"""
-    from app.schemas.common import ApiResponse
-
-    resume = db.query(Resume).filter(
-        Resume.id == resume_id,
-        Resume.user_id == current_user.id
-    ).first()
-    if not resume:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="简历不存在"
-        )
-    return ApiResponse(
-        code=200,
-        message="获取成功",
-        data=ResumeResponse.model_validate(resume)
-    )
-
-
-@router.delete("/{resume_id}")
-async def delete_resume(
-    resume_id: int,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """删除简历"""
-    from app.schemas.common import SuccessResponse
-
-    resume = db.query(Resume).filter(
-        Resume.id == resume_id,
-        Resume.user_id == current_user.id
-    ).first()
-    if not resume:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="简历不存在"
-        )
-    # 删除文件
-    if os.path.exists(resume.file_path):
-        os.remove(resume.file_path)
-    # 删除数据库记录
-    db.delete(resume)
-    db.commit()
-    return SuccessResponse()
-
-
 # ========== 简历优化相关 API ==========
+# 注意：这些带有子路径的路由必须在 /{resume_id} 之前定义，避免路由冲突
 
 @router.post("/{resume_id}/analyze")
 async def analyze_resume(
     resume_id: int,
     force_refresh: bool = Query(False, description="是否强制重新分析"),
+    jd: Optional[str] = Query(None, description="目标职位描述（可选），用于针对性分析"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """分析简历，生成多维度评分和分析报告"""
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info(f"API接收到参数: resume_id={resume_id}, force_refresh={force_refresh}, jd={bool(jd)}, jd_value={jd[:50] if jd else None}")
+
     from app.schemas.common import ApiResponse
 
     # 验证简历所有权
@@ -215,7 +169,8 @@ async def analyze_resume(
             db=db,
             resume_id=resume_id,
             llm_service=llm_service,
-            force_refresh=force_refresh
+            force_refresh=force_refresh,
+            jd=jd
         )
 
         return ApiResponse(
@@ -239,6 +194,7 @@ async def analyze_resume(
 async def get_optimization_suggestions(
     resume_id: int,
     force_refresh: bool = Query(False, description="是否强制重新生成"),
+    jd: Optional[str] = Query(None, description="目标职位描述（可选），用于针对性优化"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -266,7 +222,8 @@ async def get_optimization_suggestions(
             db=db,
             resume_id=resume_id,
             llm_service=llm_service,
-            force_refresh=force_refresh
+            force_refresh=force_refresh,
+            jd=jd
         )
 
         return ApiResponse(
@@ -510,3 +467,58 @@ async def restore_resume_version(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"恢复失败: {str(e)}"
         )
+
+
+# ========== 基础简历操作 API ==========
+# 注意：这些通用的 /{resume_id} 路由必须在所有带有子路径的路由之后定义
+
+@router.get("/{resume_id}")
+async def get_resume(
+    resume_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """获取指定简历"""
+    from app.schemas.common import ApiResponse
+
+    resume = db.query(Resume).filter(
+        Resume.id == resume_id,
+        Resume.user_id == current_user.id
+    ).first()
+    if not resume:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="简历不存在"
+        )
+    return ApiResponse(
+        code=200,
+        message="获取成功",
+        data=ResumeResponse.model_validate(resume)
+    )
+
+
+@router.delete("/{resume_id}")
+async def delete_resume(
+    resume_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """删除简历"""
+    from app.schemas.common import SuccessResponse
+
+    resume = db.query(Resume).filter(
+        Resume.id == resume_id,
+        Resume.user_id == current_user.id
+    ).first()
+    if not resume:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="简历不存在"
+        )
+    # 删除文件
+    if os.path.exists(resume.file_path):
+        os.remove(resume.file_path)
+    # 删除数据库记录
+    db.delete(resume)
+    db.commit()
+    return SuccessResponse()
