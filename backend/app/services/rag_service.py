@@ -668,6 +668,16 @@ class RAGService:
 
             response = await llm.generate_text(prompt, temperature=0.3)
 
+            # 去除可能存在的 markdown 代码块标记
+            response = response.strip()
+            if response.startswith("```json"):
+                response = response[7:]
+            elif response.startswith("```"):
+                response = response[3:]
+            if response.endswith("```"):
+                response = response[:-3]
+            response = response.strip()
+
             # 解析响应
             import json
             rerank_scores = json.loads(response)

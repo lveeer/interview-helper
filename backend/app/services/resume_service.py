@@ -520,6 +520,17 @@ async def parse_resume_with_llm(file_path: str, llm_service) -> Dict[str, Any]:
                 resume_text=raw_text
             )
             skills_response = await llm_service.generate_text(skills_prompt, temperature=0.3)
+
+            # 去除可能存在的 markdown 代码块标记
+            skills_response = skills_response.strip()
+            if skills_response.startswith("```json"):
+                skills_response = skills_response[7:]
+            elif skills_response.startswith("```"):
+                skills_response = skills_response[3:]
+            if skills_response.endswith("```"):
+                skills_response = skills_response[:-3]
+            skills_response = skills_response.strip()
+
             try:
                 llm_skills = json.loads(skills_response)
                 if isinstance(llm_skills, list):
@@ -540,6 +551,17 @@ async def parse_resume_with_llm(file_path: str, llm_service) -> Dict[str, Any]:
                 resume_text=raw_text
             )
             education_response = await llm_service.generate_text(education_prompt, temperature=0.3)
+
+            # 去除可能存在的 markdown 代码块标记
+            education_response = education_response.strip()
+            if education_response.startswith("```json"):
+                education_response = education_response[7:]
+            elif education_response.startswith("```"):
+                education_response = education_response[3:]
+            if education_response.endswith("```"):
+                education_response = education_response[:-3]
+            education_response = education_response.strip()
+
             try:
                 llm_education = json.loads(education_response)
                 if isinstance(llm_education, list):
@@ -560,6 +582,17 @@ async def parse_resume_with_llm(file_path: str, llm_service) -> Dict[str, Any]:
                 resume_text=raw_text
             )
             experience_response = await llm_service.generate_text(experience_prompt, temperature=0.3)
+
+            # 去除可能存在的 markdown 代码块标记
+            experience_response = experience_response.strip()
+            if experience_response.startswith("```json"):
+                experience_response = experience_response[7:]
+            elif experience_response.startswith("```"):
+                experience_response = experience_response[3:]
+            if experience_response.endswith("```"):
+                experience_response = experience_response[:-3]
+            experience_response = experience_response.strip()
+
             try:
                 llm_experience = json.loads(experience_response)
                 if isinstance(llm_experience, list):
@@ -580,6 +613,17 @@ async def parse_resume_with_llm(file_path: str, llm_service) -> Dict[str, Any]:
                 resume_text=raw_text
             )
             highlights_response = await llm_service.generate_text(highlights_prompt, temperature=0.5)
+
+            # 去除可能存在的 markdown 代码块标记
+            highlights_response = highlights_response.strip()
+            if highlights_response.startswith("```json"):
+                highlights_response = highlights_response[7:]
+            elif highlights_response.startswith("```"):
+                highlights_response = highlights_response[3:]
+            if highlights_response.endswith("```"):
+                highlights_response = highlights_response[:-3]
+            highlights_response = highlights_response.strip()
+
             try:
                 llm_highlights = json.loads(highlights_response)
                 if isinstance(llm_highlights, list):

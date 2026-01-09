@@ -10,9 +10,12 @@ class InterviewCreate(BaseModel):
 
 
 class InterviewQuestion(BaseModel):
+    id: int
     question: str
     category: str
     difficulty: str
+    type: str
+    purpose: str
 
 
 class InterviewMessage(BaseModel):

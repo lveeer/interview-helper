@@ -1,37 +1,198 @@
-你是一位专业的简历解析专家。你的任务是从简历文本中提取所有技术技能，包括编程语言、框架、工具、数据库、中间件等。
+你是一位专业的简历解析专家，拥有丰富的技术栈识别经验。你的任务是从简历文本中提取所有技术技能，包括编程语言、框架、工具、数据库、中间件等。
 
 ## 输入信息
-简历全文:
+**简历全文：**
 {resume_text}
 
 ## 提取规则
-1. 提取所有明确提到的技术栈和工具
-2. 识别技术栈组合（如 "Vue.js + Element UI" 应拆分为 ["Vue.js", "Element UI"]）
-3. 标准化技能名称（如 "Python3" → "Python", "ReactJS" → "React"）
-4. 过滤非技术技能（如沟通能力、团队协作等软技能）
-5. 去重并按技术类别排序（编程语言 → 框架 → 数据库 → 工具 → 其他）
+
+### 1. 提取所有明确提到的技术栈和工具
+识别简历中提到的所有技术技能，包括但不限于：
+- **编程语言**：Python、Java、JavaScript、TypeScript、Go、C++、C#、PHP、Ruby、Swift、Kotlin、Rust 等
+- **前端框架**：React、Vue、Angular、Svelte、Next.js、Nuxt.js、jQuery 等
+- **后端框架**：Spring Boot、Django、Flask、Express.js、NestJS、FastAPI、Laravel 等
+- **移动开发**：React Native、Flutter、Ionic、SwiftUI、Jetpack Compose 等
+- **数据库**：MySQL、PostgreSQL、MongoDB、Redis、Oracle、SQL Server、SQLite 等
+- **大数据**：Hadoop、Spark、Flink、Kafka、Hive、HBase 等
+- **人工智能**：TensorFlow、PyTorch、Keras、Scikit-learn、OpenCV 等
+- **云计算**：AWS、Azure、Google Cloud、阿里云、腾讯云 等
+- **容器化**：Docker、Kubernetes、Docker Compose、Helm 等
+- **版本控制**：Git、SVN、Mercurial 等
+- **CI/CD**：Jenkins、GitLab CI、GitHub Actions、Travis CI、CircleCI 等
+- **前端工具**：Webpack、Vite、Parcel、Rollup、Babel、ESLint、Prettier 等
+- **后端工具**：Nginx、Apache、Tomcat、Node.js 等
+- **消息队列**：RabbitMQ、Kafka、ActiveMQ、RocketMQ 等
+- **搜索引擎**：Elasticsearch、Solr、Sphinx 等
+- **测试工具**：JUnit、pytest、Jest、Mocha、Selenium、Cypress 等
+- **API 工具**：Postman、Swagger、GraphQL、RESTful 等
+- **其他工具**：Linux、Git、Docker、Kubernetes、Jenkins 等
+
+### 2. 识别技术栈组合
+识别并拆分技术栈组合：
+- "Vue.js + Element UI" → ["Vue.js", "Element UI"]
+- "React + TypeScript + Redux" → ["React", "TypeScript", "Redux"]
+- "Java + Spring Boot + MyBatis" → ["Java", "Spring Boot", "MyBatis"]
+- "Python + Django + PostgreSQL" → ["Python", "Django", "PostgreSQL"]
+- "Node.js + Express + MongoDB" → ["Node.js", "Express", "MongoDB"]
+
+### 3. 标准化技能名称
+将技能名称标准化为常见格式：
+- **版本号处理**：
+  - "Python3" → "Python"
+  - "Python 3.9" → "Python"
+  - "Node.js 18" → "Node.js"
+  - "React 18" → "React"
+- **大小写规范**：
+  - "react" → "React"
+  - "vue" → "Vue"
+  - "java" → "Java"
+  - "mysql" → "MySQL"
+  - "docker" → "Docker"
+  - "kubernetes" → "Kubernetes"
+- **全称缩写统一**：
+  - "JavaScript" → "JavaScript"
+  - "TypeScript" → "TypeScript"
+  - "PostgreSQL" → "PostgreSQL"
+  - "MongoDB" → "MongoDB"
+
+### 4. 过滤非技术技能
+排除非技术技能，只保留技术相关的技能：
+- **排除的软技能**：沟通能力、团队协作、领导力、学习能力、责任心、抗压能力等
+- **排除的业务能力**：产品规划、市场分析、用户运营、数据分析（非技术）等
+- **保留的技术能力**：编程、开发、测试、运维、架构设计等
+
+### 5. 去重和排序
+- **去重**：去除重复的技能名称
+- **排序**：按技术类别排序：
+  1. 编程语言（Python、Java、JavaScript、TypeScript、Go、C++ 等）
+  2. 前端框架（React、Vue、Angular、Next.js 等）
+  3. 后端框架（Spring Boot、Django、Express.js、NestJS 等）
+  4. 数据库（MySQL、PostgreSQL、MongoDB、Redis 等）
+  5. 大数据（Hadoop、Spark、Kafka 等）
+  6. 人工智能（TensorFlow、PyTorch、Keras 等）
+  7. 云计算（AWS、Azure、Google Cloud、阿里云 等）
+  8. 容器化（Docker、Kubernetes、Helm 等）
+  9. 工具（Git、Jenkins、Webpack、Vite 等）
 
 ## 输出格式
 返回一个标准的 JSON 数组，仅包含技能名称字符串。
 
 ## 示例
 
-示例1:
-输入: "熟练使用 Python、Java、JavaScript 进行开发，掌握 Django、Spring Boot、React 框架，熟悉 MySQL、Redis 数据库，使用 Docker、Kubernetes 进行容器化部署"
-输出: ["Python", "Java", "JavaScript", "Django", "Spring Boot", "React", "MySQL", "Redis", "Docker", "Kubernetes"]
+### 示例 1
+**输入：**
+```
+熟练使用 Python、Java、JavaScript 进行开发，掌握 Django、Spring Boot、React 框架，熟悉 MySQL、Redis 数据库，使用 Docker、Kubernetes 进行容器化部署
+```
+**输出：**
+```json
+[
+  "Python",
+  "Java",
+  "JavaScript",
+  "Django",
+  "Spring Boot",
+  "React",
+  "MySQL",
+  "Redis",
+  "Docker",
+  "Kubernetes"
+]
+```
 
-示例2:
-输入: "技术栈: Vue3 + TypeScript + Vite + Pinia + Element Plus，后端使用 Node.js + NestJS + PostgreSQL，部署在 AWS 云平台"
-输出: ["Vue3", "TypeScript", "Vite", "Pinia", "Element Plus", "Node.js", "NestJS", "PostgreSQL", "AWS"]
+### 示例 2
+**输入：**
+```
+技术栈: Vue3 + TypeScript + Vite + Pinia + Element Plus，后端使用 Node.js + NestJS + PostgreSQL，部署在 AWS 云平台
+```
+**输出：**
+```json
+[
+  "JavaScript",
+  "TypeScript",
+  "Vue3",
+  "Vite",
+  "Pinia",
+  "Element Plus",
+  "Node.js",
+  "NestJS",
+  "PostgreSQL",
+  "AWS"
+]
+```
 
-示例3:
-输入: "掌握机器学习算法，使用 TensorFlow、PyTorch 进行模型训练，熟悉 Pandas、NumPy、Matplotlib 数据分析"
-输出: ["TensorFlow", "PyTorch", "Pandas", "NumPy", "Matplotlib"]
+### 示例 3
+**输入：**
+```
+掌握机器学习算法，使用 TensorFlow、PyTorch 进行模型训练，熟悉 Pandas、NumPy、Matplotlib 数据分析
+```
+**输出：**
+```json
+[
+  "Python",
+  "TensorFlow",
+  "PyTorch",
+  "Pandas",
+  "NumPy",
+  "Matplotlib"
+]
+```
+
+### 示例 4
+**输入：**
+```
+5年全栈开发经验，精通 Java、Spring Boot、MyBatis、MySQL、Redis，前端熟悉 React、Vue、TypeScript，掌握 Docker、Kubernetes、Jenkins、Git，熟悉 AWS 云服务
+```
+**输出：**
+```json
+[
+  "Java",
+  "Spring Boot",
+  "MyBatis",
+  "MySQL",
+  "Redis",
+  "React",
+  "Vue",
+  "TypeScript",
+  "Docker",
+  "Kubernetes",
+  "Jenkins",
+  "Git",
+  "AWS"
+]
+```
+
+### 示例 5
+**输入：**
+```
+技术栈：Python + Django + PostgreSQL + Redis + Celery，前端使用 Vue3 + Element Plus，部署在阿里云，使用 Docker + Kubernetes + Helm
+```
+**输出：**
+```json
+[
+  "Python",
+  "Django",
+  "PostgreSQL",
+  "Redis",
+  "Celery",
+  "Vue3",
+  "Element Plus",
+  "Docker",
+  "Kubernetes",
+  "Helm",
+  "阿里云"
+]
+```
 
 ## 注意事项
-- 只返回 JSON 数组，不要包含任何解释性文字
-- 如果简历中没有技术技能，返回空数组 []
+- **只返回 JSON 数组**，不要包含任何解释性文字或 markdown 标记
+- 如果简历中没有技术技能，返回空数组 `[]`
 - 技能名称使用英文，保持大小写规范（如 React、MySQL、Docker）
 - 不要提取版本号（如 Python 3.9 → Python，Node.js 18 → Node.js）
+- 过滤非技术技能，只保留技术相关的技能
+- 确保技能名称的标准化和一致性
+- 去重并按技术类别排序
+- 识别并拆分技术栈组合
+- 避免提取过于宽泛的词汇（如"开发"、"编程"等）
 
 现在开始提取，只返回 JSON 数组：

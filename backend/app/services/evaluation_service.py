@@ -38,6 +38,17 @@ class EvaluationService:
 
         try:
             response = await llm.generate_text(prompt, temperature=0.5)
+
+            # 去除可能存在的 markdown 代码块标记
+            response = response.strip()
+            if response.startswith("```json"):
+                response = response[7:]
+            elif response.startswith("```"):
+                response = response[3:]
+            if response.endswith("```"):
+                response = response[:-3]
+            response = response.strip()
+
             result = json.loads(response)
             return result
         except Exception as e:

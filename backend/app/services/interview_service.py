@@ -41,12 +41,27 @@ class InterviewService:
         )
 
         try:
-            response = await llm.generate_text(prompt, temperature=0.8)
+            # 使用较低的温度参数，使生成的问题更加确定和准确
+            response = await llm.generate_text(prompt, temperature=0.6)
+
+            # 去除可能存在的 markdown 代码块标记
+            response = response.strip()
+            if response.startswith("```json"):
+                response = response[7:]
+            elif response.startswith("```"):
+                response = response[3:]
+            if response.endswith("```"):
+                response = response[:-3]
+            response = response.strip()
+
             # 解析 JSON 响应
             questions = json.loads(response)
             # 验证返回的问题格式
             if not isinstance(questions, list) or len(questions) == 0:
                 raise ValueError("LLM 返回的问题格式不正确")
+            # 验证问题数量
+            if len(questions) != num_questions:
+                print(f"警告: 生成的问题数量({len(questions)})与要求({num_questions})不一致")
             return questions
         except json.JSONDecodeError as e:
             # JSON 解析失败，返回默认问题
@@ -57,42 +72,56 @@ class InterviewService:
                     "id": 1,
                     "question": "请简单介绍一下你自己",
                     "category": "自我介绍",
-                    "difficulty": "简单"
+                    "difficulty": "简单",
+                    "type": "行为面试",
+                    "purpose": "了解候选人的基本背景和职业经历"
                 },
                 {
                     "id": 2,
                     "question": "请详细介绍一下你最引以为豪的项目",
                     "category": "项目经验",
-                    "difficulty": "中等"
+                    "difficulty": "中等",
+                    "type": "行为面试",
+                    "purpose": "深入挖掘候选人的项目经验"
                 },
                 {
                     "id": 3,
                     "question": "你在项目中遇到的最大挑战是什么？如何解决的？",
                     "category": "问题解决",
-                    "difficulty": "中等"
+                    "difficulty": "中等",
+                    "type": "行为面试",
+                    "purpose": "考察候选人的问题解决能力"
                 }
             ]
         except Exception as e:
             # 其他错误，返回默认问题并记录日志
-            print(f"警告: 生成面试问题失败: {e}")
+            print(f"警告: 生成面试问题失败: {type(e).__name__}: {e}")
+            import traceback
+            traceback.print_exc()
             return [
                 {
                     "id": 1,
                     "question": "请简单介绍一下你自己",
                     "category": "自我介绍",
-                    "difficulty": "简单"
+                    "difficulty": "简单",
+                    "type": "行为面试",
+                    "purpose": "了解候选人的基本背景和职业经历"
                 },
                 {
                     "id": 2,
                     "question": "请详细介绍一下你最引以为豪的项目",
                     "category": "项目经验",
-                    "difficulty": "中等"
+                    "difficulty": "中等",
+                    "type": "行为面试",
+                    "purpose": "深入挖掘候选人的项目经验"
                 },
                 {
                     "id": 3,
                     "question": "你在项目中遇到的最大挑战是什么？如何解决的？",
                     "category": "问题解决",
-                    "difficulty": "中等"
+                    "difficulty": "中等",
+                    "type": "行为面试",
+                    "purpose": "考察候选人的问题解决能力"
                 }
             ]
 
@@ -136,6 +165,17 @@ class InterviewService:
 
         try:
             response = await llm.generate_text(prompt, temperature=0.7)
+
+            # 去除可能存在的 markdown 代码块标记
+            response = response.strip()
+            if response.startswith("```json"):
+                response = response[7:]
+            elif response.startswith("```"):
+                response = response[3:]
+            if response.endswith("```"):
+                response = response[:-3]
+            response = response.strip()
+
             result = json.loads(response)
             # 验证返回的格式
             if not isinstance(result, dict) or "type" not in result:
@@ -188,6 +228,17 @@ class InterviewService:
 
         try:
             response = await llm.generate_text(prompt, temperature=0.5)
+
+            # 去除可能存在的 markdown 代码块标记
+            response = response.strip()
+            if response.startswith("```json"):
+                response = response[7:]
+            elif response.startswith("```"):
+                response = response[3:]
+            if response.endswith("```"):
+                response = response[:-3]
+            response = response.strip()
+
             result = json.loads(response)
             # 验证返回的格式
             if not isinstance(result, dict) or "score" not in result:

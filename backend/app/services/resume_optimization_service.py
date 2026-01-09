@@ -84,6 +84,16 @@ class ResumeOptimizationService:
 
             logger.info(f"LLM 原始响应: {analysis_response[:500]}...")
 
+            # 去除可能存在的 markdown 代码块标记
+            analysis_response = analysis_response.strip()
+            if analysis_response.startswith("```json"):
+                analysis_response = analysis_response[7:]
+            elif analysis_response.startswith("```"):
+                analysis_response = analysis_response[3:]
+            if analysis_response.endswith("```"):
+                analysis_response = analysis_response[:-3]
+            analysis_response = analysis_response.strip()
+
             # 解析 LLM 响应
             try:
                 analysis_result = json.loads(analysis_response)
@@ -479,6 +489,16 @@ class ResumeOptimizationService:
                 temperature=0.5,
                 max_tokens=3000
             )
+
+            # 去除可能存在的 markdown 代码块标记
+            suggestions_response = suggestions_response.strip()
+            if suggestions_response.startswith("```json"):
+                suggestions_response = suggestions_response[7:]
+            elif suggestions_response.startswith("```"):
+                suggestions_response = suggestions_response[3:]
+            if suggestions_response.endswith("```"):
+                suggestions_response = suggestions_response[:-3]
+            suggestions_response = suggestions_response.strip()
 
             # 解析 LLM 响应
             try:
