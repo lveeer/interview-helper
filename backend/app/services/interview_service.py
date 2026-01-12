@@ -11,10 +11,93 @@ class InterviewService:
     """面试服务"""
 
     @staticmethod
+    async def retrieve_knowledge_context(
+        resume_data: Dict[str, Any],
+        job_description: str,
+        user_id: int,
+        knowledge_doc_ids: List[int] = None,
+        db: Session = None
+    ) -> str:
+        """
+        从知识库中检索与JD和简历相关的知识点
+
+        Args:
+            resume_data: 简历数据
+            job_description: 岗位描述
+            user_id: 用户ID
+            knowledge_doc_ids: 指定的知识库文档ID列表（可选）
+            db: 数据库会话
+
+        Returns:
+            格式化的知识库上下文文本
+        """
+        try:
+            from app.services.rag_service import RAGService
+
+            # 提取简历中的技术栈和关键词
+            tech_stack = []
+            if resume_data.get('skills'):
+                skills_text = json.dumps(resume_data['skills'], ensure_ascii=False)
+                tech_stack.extend([skill.get('name', '') for skill in resume_data['skills'] if skill.get('name')])
+
+            if resume_data.get('experience'):
+                for exp in resume_data['experience']:
+                    tech_stack.append(exp.get('title', ''))
+                    tech_stack.append(exp.get('company', ''))
+
+            # 构建查询，结合JD和技术栈
+            tech_keywords = ', '.join([kw for kw in tech_stack if kw][:5])  # 最多取5个关键词
+            query = f"{job_description} {tech_keywords}"
+
+            print(f"[知识库检索] 查询: {query}")
+
+            # 从知识库中检索相关内容
+            results = await RAGService.search_knowledge(
+                query=query,
+                user_id=user_id,
+                top_k=5,
+                use_query_expansion=True,
+                use_hybrid_search=True,
+                use_reranking=True,
+                db=db
+            )
+
+            # 如果指定了文档ID列表，过滤结果
+            if knowledge_doc_ids:
+                results = [r for r in results if r.get('document_id') in knowledge_doc_ids]
+
+            if not results:
+                print(f"[知识库检索] 未找到相关内容")
+                return ""
+
+            # 格式化知识库上下文
+            context_parts = []
+            for i, result in enumerate(results):
+                content = result.get('content', '')
+                source = result.get('source', '未知来源')
+                score = result.get('score', 0)
+
+                context_parts.append(
+                    f"【知识点 {i+1}】来源: {source} (相关度: {score:.2f})\n{content}"
+                )
+
+            knowledge_context = "\n\n".join(context_parts)
+            print(f"[知识库检索] 检索到 {len(results)} 个相关知识点")
+
+            return knowledge_context
+
+        except Exception as e:
+            print(f"[知识库检索] 检索失败: {e}")
+            import traceback
+            traceback.print_exc()
+            return ""
+
+    @staticmethod
     async def generate_interview_questions(
         resume_data: Dict[str, Any],
         job_description: str,
-        num_questions: int = 10
+        num_questions: int = 10,
+        knowledge_context: str = ""
     ) -> List[Dict[str, Any]]:
         """
         基于简历和 JD 生成面试问题
@@ -23,6 +106,7 @@ class InterviewService:
             resume_data: 简历数据
             job_description: 岗位描述
             num_questions: 问题数量
+            knowledge_context: 知识库上下文（可选）
 
         Returns:
             面试问题列表
@@ -37,7 +121,8 @@ class InterviewService:
             'interview_questions',
             num_questions=num_questions,
             resume_text=resume_text,
-            job_description=job_description
+            job_description=job_description,
+            knowledge_context=knowledge_context
         )
 
         try:
@@ -268,7 +353,9 @@ class InterviewService:
         interview_id: int,
         resume_data: Dict[str, Any],
         job_description: str,
-        num_questions: int = 10
+        num_questions: int = 10,
+        user_id: int = None,
+        knowledge_doc_ids: List[int] = None
     ):
         """
         异步生成面试问题并在完成后更新数据库
@@ -279,13 +366,30 @@ class InterviewService:
             resume_data: 简历数据
             job_description: 岗位描述
             num_questions: 问题数量
+            user_id: 用户ID（用于知识库检索）
+            knowledge_doc_ids: 指定的知识库文档ID列表（可选）
         """
         try:
+            # 从知识库检索相关上下文（可选）
+            knowledge_context = ""
+            if user_id:
+                print(f"[异步生成] 开始从知识库检索相关内容，用户ID: {user_id}")
+                knowledge_context = await InterviewService.retrieve_knowledge_context(
+                    resume_data=resume_data,
+                    job_description=job_description,
+                    user_id=user_id,
+                    knowledge_doc_ids=knowledge_doc_ids,
+                    db=db
+                )
+                if knowledge_context:
+                    print(f"[异步生成] 知识库检索成功，上下文长度: {len(knowledge_context)}")
+
             # 生成面试问题
             questions = await InterviewService.generate_interview_questions(
                 resume_data,
                 job_description,
-                num_questions
+                num_questions,
+                knowledge_context=knowledge_context
             )
 
             # 更新数据库

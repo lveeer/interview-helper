@@ -88,7 +88,9 @@ async def create_interview(
             interview_id=db_interview.id,
             resume_data=resume_data,
             job_description=interview_data.job_description,
-            num_questions=10
+            num_questions=10,
+            user_id=current_user.id,
+            knowledge_doc_ids=interview_data.knowledge_doc_ids
         )
     )
     print(f"[创建面试] 已启动后台任务生成面试问题")

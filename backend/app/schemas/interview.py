@@ -7,6 +7,7 @@ from app.models.interview import InterviewStatus
 class InterviewCreate(BaseModel):
     resume_id: int
     job_description: str
+    knowledge_doc_ids: Optional[List[int]] = None  # 可选的知识库文档ID列表
 
 
 class InterviewQuestion(BaseModel):

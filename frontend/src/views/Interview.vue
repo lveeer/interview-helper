@@ -104,6 +104,27 @@
             placeholder="请输入目标岗位的职位描述（JD）"
           />
         </el-form-item>
+
+        <el-form-item label="知识库文档">
+          <el-select
+            v-model="createForm.knowledge_doc_ids"
+            placeholder="请选择知识库文档（可选）"
+            style="width: 100%"
+            multiple
+            collapse-tags
+            collapse-tags-tooltip
+          >
+            <el-option
+              v-for="doc in knowledgeList"
+              :key="doc.id"
+              :label="doc.file_name"
+              :value="doc.id"
+            />
+          </el-select>
+          <div style="margin-top: 4px; font-size: 12px; color: #909399;">
+            可选：选择知识库文档，AI 将基于这些文档进行面试提问
+          </div>
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="showCreateDialog = false">取消</el-button>
@@ -121,6 +142,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { getInterviewList, createInterview } from '@/api/interview'
 import { getResumeList } from '@/api/resume'
+import { getKnowledgeList } from '@/api/knowledge'
 
 const router = useRouter()
 const loading = ref(false)
@@ -128,10 +150,12 @@ const creating = ref(false)
 const showCreateDialog = ref(false)
 const interviewList = ref([])
 const resumeList = ref([])
+const knowledgeList = ref([])
 
 const createForm = ref({
   resume_id: '',
-  job_description: ''
+  job_description: '',
+  knowledge_doc_ids: []
 })
 
 const loadInterviewList = async () => {
@@ -159,6 +183,17 @@ const loadResumeList = async () => {
   }
 }
 
+const loadKnowledgeList = async () => {
+  try {
+    const res = await getKnowledgeList()
+    if (res.code === 200) {
+      knowledgeList.value = res.data || []
+    }
+  } catch (error) {
+    console.error('加载知识库列表失败:', error)
+  }
+}
+
 const handleCreate = async () => {
   if (!createForm.value.resume_id) {
     ElMessage.warning('请选择简历')
@@ -178,7 +213,8 @@ const handleCreate = async () => {
       showCreateDialog.value = false
       createForm.value = {
         resume_id: '',
-        job_description: ''
+        job_description: '',
+        knowledge_doc_ids: []
       }
       loadInterviewList()
     }
@@ -242,6 +278,7 @@ const truncateText = (text, maxLength) => {
 onMounted(() => {
   loadInterviewList()
   loadResumeList()
+  loadKnowledgeList()
 })
 </script>
 

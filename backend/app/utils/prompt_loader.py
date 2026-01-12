@@ -1,5 +1,6 @@
 """提示词加载工具"""
 import os
+import re
 from typing import Dict
 
 
@@ -51,7 +52,15 @@ class PromptLoader:
             格式化后的提示词
         """
         template = PromptLoader.get_prompt(prompt_name)
-        return template.format(**kwargs)
+        
+        # 使用安全的字符串替换，避免与 JSON 中的花括号冲突
+        result = template
+        for key, value in kwargs.items():
+            # 使用正则表达式替换 {key} 占位符
+            pattern = re.compile(r'\{' + re.escape(key) + r'\}')
+            result = pattern.sub(str(value), result)
+        
+        return result
 
     @staticmethod
     def clear_cache():
