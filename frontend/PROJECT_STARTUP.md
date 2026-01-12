@@ -44,49 +44,84 @@ interview-helper/
 
 ## 快速启动
 
-### 1. 克隆项目
+### 启动顺序说明
+
+**重要：必须先启动后端，再启动前端！**
+
+```
+后端服务 (端口 8000) → 前端服务 (端口 5173) → 浏览器访问
+```
+
+### 步骤 1：克隆项目
 
 ```bash
 git clone git@github.com:lveeer/interview-helper.git
 cd interview-helper
 ```
 
-### 2. 后端启动
+### 步骤 2：启动后端服务
+
+打开第一个终端窗口，执行以下命令：
 
 ```bash
+# 进入后端目录
 cd backend
 
-# 创建虚拟环境（推荐）
+# 创建 Python 虚拟环境（首次运行需要）
 python -m venv venv
-source venv/bin/activate  # Linux/Mac
-# 或 venv\Scripts\activate  # Windows
 
-# 安装依赖
+# 激活虚拟环境
+# Linux/Mac:
+source venv/bin/activate
+# Windows:
+venv\Scripts\activate
+
+# 安装后端依赖（首次运行需要）
 pip install -r requirements.txt
 
-# 启动后端服务
+# 启动后端开发服务器
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-后端服务将运行在 `http://localhost:8000`
+**后端启动成功标志：**
+- 终端显示 `INFO: Uvicorn running on http://0.0.0.0:8000`
+- 访问 `http://localhost:8000/docs` 可以看到 Swagger API 文档界面
 
-### 3. 前端启动
+### 步骤 3：启动前端服务
+
+打开第二个终端窗口，执行以下命令：
 
 ```bash
+# 进入前端目录
 cd frontend
 
-# 安装依赖
+# 安装前端依赖（首次运行需要）
 npm install
 
-# 启动开发服务器
+# 启动前端开发服务器
 npm run dev
 ```
 
-前端服务将运行在 `http://localhost:5173`
+**前端启动成功标志：**
+- 终端显示 `Local: http://localhost:5173/`
+- 浏览器自动打开或手动访问 `http://localhost:5173` 可以看到登录页面
 
-### 4. 访问应用
+### 步骤 4：验证服务
 
-打开浏览器访问：`http://localhost:5173`
+1. **后端验证：** 访问 `http://localhost:8000/docs` 查看 API 文档
+2. **前端验证：** 访问 `http://localhost:5173` 查看应用界面
+3. **功能验证：** 注册/登录账号，测试基本功能
+
+### 服务端口说明
+
+| 服务 | 端口 | 地址 | 说明 |
+|------|------|------|------|
+| 后端 API | 8000 | http://localhost:8000 | RESTful API 和 WebSocket |
+| 前端页面 | 5173 | http://localhost:5173 | Vue 应用界面 |
+
+### 停止服务
+
+在各自的终端窗口按 `Ctrl + C` 停止服务
 
 ## 常用命令
 
@@ -117,6 +152,52 @@ uvicorn app.main:app --reload
 
 # 启动生产服务器
 uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
+
+### 一键启动脚本（可选）
+
+**Linux/Mac 用户：**
+
+创建 `start.sh` 文件：
+```bash
+#!/bin/bash
+
+# 启动后端
+cd backend
+source venv/bin/activate
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000 &
+BACKEND_PID=$!
+
+# 等待后端启动
+sleep 5
+
+# 启动前端
+cd ../frontend
+npm run dev &
+FRONTEND_PID=$!
+
+echo "后端 PID: $BACKEND_PID"
+echo "前端 PID: $FRONTEND_PID"
+echo "按 Ctrl+C 停止所有服务"
+
+# 等待用户中断
+wait
+```
+
+运行：
+```bash
+chmod +x start.sh
+./start.sh
+```
+
+**Windows 用户：**
+
+创建 `start.bat` 文件：
+```batch
+@echo off
+start "Backend" cmd /k "cd backend && venv\Scripts\activate && uvicorn app.main:app --reload --host 0.0.0.0 --port 8000"
+timeout /t 5
+start "Frontend" cmd /k "cd frontend && npm run dev"
 ```
 
 ## 环境配置
@@ -190,16 +271,98 @@ SECRET_KEY=your-secret-key
 ## 常见问题
 
 ### Q: 前端启动后无法连接后端？
-A: 检查后端服务是否正常启动，端口是否为 8000，防火墙是否放行。
+**A: 请按以下步骤排查：**
+
+1. 检查后端是否已启动
+   ```bash
+   # 查看端口 8000 是否被占用
+   lsof -i :8000  # Linux/Mac
+   netstat -ano | findstr :8000  # Windows
+   ```
+
+2. 检查后端服务状态
+   - 访问 `http://localhost:8000/docs` 是否能看到 API 文档
+   - 检查后端终端是否有错误信息
+
+3. 检查防火墙设置
+   ```bash
+   # Linux/Mac 临时关闭防火墙测试
+   sudo ufw disable
+   ```
+
+4. 检查前端 API 地址配置
+   - 确认 `frontend/.env.development` 文件中的 `VITE_API_BASE_URL` 是否正确
 
 ### Q: npm install 失败？
-A: 尝试清除缓存：`npm cache clean --force`，然后重新安装。
+**A: 尝试以下解决方案：**
+
+1. 清除 npm 缓存
+   ```bash
+   npm cache clean --force
+   ```
+
+2. 删除 node_modules 重新安装
+   ```bash
+   rm -rf node_modules package-lock.json
+   npm install
+   ```
+
+3. 使用国内镜像源
+   ```bash
+   npm config set registry https://registry.npmmirror.com
+   npm install
+   ```
+
+4. 检查 Node.js 版本（需要 >= 16.x）
+   ```bash
+   node -v
+   ```
+
+### Q: 后端启动失败，提示端口被占用？
+**A: 查找并终止占用端口的进程：**
+
+```bash
+# Linux/Mac
+lsof -ti:8000 | xargs kill -9
+
+# Windows
+netstat -ano | findstr :8000
+taskkill /PID <进程ID> /F
+```
 
 ### Q: 模拟面试功能无法使用？
-A: 确保 WebSocket 连接正常，检查浏览器是否支持 WebSocket。
+**A: 确保 WebSocket 连接正常：**
+
+1. 检查浏览器控制台是否有 WebSocket 连接错误
+2. 确认后端 WebSocket 地址正确：`ws://localhost:8000/api/interview/ws`
+3. 检查浏览器是否支持 WebSocket（现代浏览器都支持）
 
 ### Q: 简历上传失败？
-A: 检查文件格式是否为 PDF 或 DOCX，文件大小是否超出限制。
+**A: 检查以下内容：**
+
+1. 文件格式：仅支持 PDF 和 DOCX 格式
+2. 文件大小：检查是否有大小限制
+3. 浏览器控制台：查看具体错误信息
+
+### Q: 虚拟环境激活失败？
+**A: 按系统选择正确的激活命令：**
+
+- **Linux/Mac:**
+  ```bash
+  source venv/bin/activate
+  ```
+
+- **Windows (CMD):**
+  ```batch
+  venv\Scripts\activate.bat
+  ```
+
+- **Windows (PowerShell):**
+  ```powershell
+  venv\Scripts\Activate.ps1
+  # 如果提示执行策略错误，先运行：
+  Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+  ```
 
 ## 联系方式
 
