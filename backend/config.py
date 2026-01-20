@@ -1,4 +1,4 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import field_validator
 from typing import List
 
@@ -39,6 +39,10 @@ class Settings(BaseSettings):
     UPLOAD_DIR: str = "./uploads"
     MAX_UPLOAD_SIZE: int = 10485760  # 10MB
     ALLOWED_EXTENSIONS: str = ".pdf,.docx,.doc"
+
+    def get_allowed_extensions_list(self) -> List[str]:
+        """获取允许的文件扩展名列表"""
+        return [ext.strip() for ext in self.ALLOWED_EXTENSIONS.split(',')]
 
     # CORS 配置
     CORS_ORIGINS: str = "http://localhost:5173,http://localhost:3000"

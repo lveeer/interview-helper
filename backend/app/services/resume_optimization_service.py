@@ -486,8 +486,7 @@ class ResumeOptimizationService:
         try:
             suggestions_response = await llm_service.generate_text(
                 suggestions_prompt,
-                temperature=0.5,
-                max_tokens=3000
+                temperature=0.5
             )
 
             # 去除可能存在的 markdown 代码块标记

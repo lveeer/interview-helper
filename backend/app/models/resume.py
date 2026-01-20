@@ -18,6 +18,7 @@ class Resume(Base):
     education = Column(Text)  # JSON 格式存储
     experience = Column(Text)  # JSON 格式存储
     skills = Column(Text)  # JSON 格式存储
+    skills_raw = Column(Text)  # JSON 格式存储，专业技能栏原始内容
     projects = Column(Text)  # JSON 格式存储
     highlights = Column(Text)  # JSON 格式存储
 
@@ -31,6 +32,7 @@ class Resume(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     user = relationship("User", backref="resumes")
+    interviews = relationship("Interview", back_populates="resume", passive_deletes='all')
     optimizations = relationship("ResumeOptimization", back_populates="resume", cascade="all, delete-orphan")
     optimization_history = relationship("ResumeOptimizationHistory", back_populates="resume", cascade="all, delete-orphan")
 

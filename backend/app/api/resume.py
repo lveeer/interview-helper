@@ -7,6 +7,7 @@ from app.models.user import User
 from app.models.resume import Resume
 from app.schemas.resume import (
     ResumeResponse,
+    ResumeListItem,
     OptimizationSuggestion,
     OptimizationApplyRequest,
     OptimizationApplyResponse,
@@ -19,7 +20,11 @@ from app.api.auth import get_current_user
 from app.services.resume_optimization_service import ResumeOptimizationService
 import os
 import json
+import logging
 from config import settings
+
+# 配置日志
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -32,16 +37,17 @@ async def upload_resume(
 ):
     """上传简历文件并使用 LLM 增强解析"""
     from app.schemas.common import ApiResponse
-    import logging
 
-    logger = logging.getLogger(__name__)
+    logger.info(f"用户 {current_user.id} 开始上传简历: {file.filename}")
 
     # 验证文件类型
     file_ext = os.path.splitext(file.filename)[1].lower()
-    if file_ext not in settings.ALLOWED_EXTENSIONS:
+    allowed_extensions = settings.get_allowed_extensions_list()
+    if file_ext not in allowed_extensions:
+        logger.warning(f"不支持的文件类型: {file_ext}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"不支持的文件类型，仅支持: {', '.join(settings.ALLOWED_EXTENSIONS)}"
+            detail=f"不支持的文件类型，仅支持: {', '.join(allowed_extensions)}"
         )
 
     # 保存文件
@@ -49,11 +55,17 @@ async def upload_resume(
     os.makedirs(upload_dir, exist_ok=True)
     file_path = os.path.join(upload_dir, f"{current_user.id}_{file.filename}")
 
-    with open(file_path, "wb") as f:
-        content = await file.read()
-        f.write(content)
-
-    logger.info(f"用户 {current_user.id} 上传简历: {file.filename}")
+    try:
+        with open(file_path, "wb") as f:
+            content = await file.read()
+            f.write(content)
+        logger.info(f"文件保存成功: {file_path}")
+    except Exception as e:
+        logger.error(f"文件保存失败: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"文件保存失败: {str(e)}"
+        )
 
     # 创建简历记录
     db_resume = Resume(
@@ -66,17 +78,20 @@ async def upload_resume(
     db.commit()
     db.refresh(db_resume)
 
+    logger.info(f"简历记录创建成功，ID: {db_resume.id}")
+
     # 调用简历解析服务（使用 LLM 增强）
     try:
         from app.services.resume_service import parse_resume_with_llm
         from app.services.llm_service import get_iflow_llm
-        
+
         # 获取 LLM 服务
         llm_service = await get_iflow_llm()
-        
+
         # 使用 LLM 增强解析
+        logger.info(f"开始解析简历 {db_resume.id}")
         parsed_data = await parse_resume_with_llm(file_path, llm_service)
-        
+
         # 保存解析结果
         db_resume.personal_info = json.dumps(parsed_data.get("personal_info"), ensure_ascii=False)
         db_resume.education = json.dumps(parsed_data.get("education"), ensure_ascii=False)
@@ -84,27 +99,20 @@ async def upload_resume(
         db_resume.skills = json.dumps(parsed_data.get("skills"), ensure_ascii=False)
         db_resume.projects = json.dumps(parsed_data.get("projects"), ensure_ascii=False)
         db_resume.highlights = json.dumps(parsed_data.get("highlights"), ensure_ascii=False)
+        db.resume.skills_raw = json.dumps(parsed_data.get("skills_raw", []), ensure_ascii=False)
         db.commit()
-        
-        logger.info(f"简历 {db_resume.id} 解析完成，提取到 {len(parsed_data.get('skills', []))} 个技能")
-        
+
+        logger.info(f"简历 {db_resume.id} 解析完成 - "
+                   f"技能: {len(parsed_data.get('skills', []))}, "
+                   f"教育: {len(parsed_data.get('education', []))}, "
+                   f"经历: {len(parsed_data.get('experience', []))}, "
+                   f"项目: {len(parsed_data.get('projects', []))}")
+
     except Exception as e:
         logger.error(f"简历解析失败: {e}", exc_info=True)
         # 解析失败不影响简历上传，继续返回
-        # 可以选择在这里使用基础解析作为后备
-        try:
-            from app.services.resume_service import ResumeParser
-            parsed_data = ResumeParser.parse_resume(file_path)
-            db_resume.personal_info = json.dumps(parsed_data.get("personal_info"), ensure_ascii=False)
-            db_resume.education = json.dumps(parsed_data.get("education"), ensure_ascii=False)
-            db_resume.experience = json.dumps(parsed_data.get("experience"), ensure_ascii=False)
-            db_resume.skills = json.dumps(parsed_data.get("skills"), ensure_ascii=False)
-            db_resume.projects = json.dumps(parsed_data.get("projects"), ensure_ascii=False)
-            db_resume.highlights = json.dumps(parsed_data.get("highlights"), ensure_ascii=False)
-            db.commit()
-            logger.info("使用基础解析完成简历解析")
-        except Exception as fallback_error:
-            logger.error(f"基础解析也失败: {fallback_error}", exc_info=True)
+        # 不再使用基础解析作为后备，因为正则表达式解析质量太差
+        logger.warning("跳过基础解析，简历已保存但未解析")
 
     return ApiResponse(
         code=201,
@@ -118,14 +126,21 @@ async def get_resumes(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """获取用户的所有简历"""
+    """获取用户的所有简历（轻量级响应）"""
     from app.schemas.common import ListResponse
 
-    resumes = db.query(Resume).filter(Resume.user_id == current_user.id).all()
+    # 只查询列表需要的字段，减少数据传输，按创建时间倒序排列
+    resumes = db.query(
+        Resume.id,
+        Resume.file_name,
+        Resume.file_type,
+        Resume.created_at
+    ).filter(Resume.user_id == current_user.id).order_by(Resume.created_at.desc()).all()
+
     return ListResponse(
         code=200,
         message="获取成功",
-        data=[ResumeResponse.model_validate(r) for r in resumes],
+        data=[ResumeListItem.model_validate(r) for r in resumes],
         total=len(resumes)
     )
 
@@ -471,6 +486,69 @@ async def restore_resume_version(
 
 # ========== 基础简历操作 API ==========
 # 注意：这些通用的 /{resume_id} 路由必须在所有带有子路径的路由之后定义
+
+@router.post("/{resume_id}/reparse")
+async def reparse_resume(
+    resume_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """重新解析简历（使用最新的提示词）"""
+    from app.schemas.common import ApiResponse
+
+    # 验证简历所有权
+    resume = db.query(Resume).filter(
+        Resume.id == resume_id,
+        Resume.user_id == current_user.id
+    ).first()
+    if not resume:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="简历不存在"
+        )
+
+    # 检查文件是否存在
+    if not os.path.exists(resume.file_path):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="简历文件不存在"
+        )
+
+    try:
+        from app.services.resume_service import parse_resume_with_llm
+        from app.services.llm_service import get_iflow_llm
+
+        # 获取 LLM 服务
+        llm_service = await get_iflow_llm()
+
+        # 使用 LLM 重新解析
+        logger.info(f"开始重新解析简历 {resume_id}")
+        parsed_data = await parse_resume_with_llm(resume.file_path, llm_service)
+
+        # 更新解析结果
+        resume.personal_info = json.dumps(parsed_data.get("personal_info"), ensure_ascii=False)
+        resume.education = json.dumps(parsed_data.get("education"), ensure_ascii=False)
+        resume.experience = json.dumps(parsed_data.get("experience"), ensure_ascii=False)
+        resume.skills = json.dumps(parsed_data.get("skills"), ensure_ascii=False)
+        resume.skills_raw = json.dumps(parsed_data.get("skills_raw", []), ensure_ascii=False)
+        resume.projects = json.dumps(parsed_data.get("projects"), ensure_ascii=False)
+        resume.highlights = json.dumps(parsed_data.get("highlights"), ensure_ascii=False)
+        db.commit()
+
+        logger.info(f"简历 {resume_id} 重新解析完成")
+
+        return ApiResponse(
+            code=200,
+            message="重新解析成功",
+            data=ResumeResponse.model_validate(resume)
+        )
+    except Exception as e:
+        logger.error(f"简历重新解析失败: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"重新解析失败: {str(e)}"
+        )
+
 
 @router.get("/{resume_id}")
 async def get_resume(

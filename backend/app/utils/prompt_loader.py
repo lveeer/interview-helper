@@ -53,12 +53,11 @@ class PromptLoader:
         """
         template = PromptLoader.get_prompt(prompt_name)
         
-        # 使用安全的字符串替换，避免与 JSON 中的花括号冲突
+        # 使用字符串替换，避免正则表达式对特殊字符（如反斜杠）的解析问题
         result = template
         for key, value in kwargs.items():
-            # 使用正则表达式替换 {key} 占位符
-            pattern = re.compile(r'\{' + re.escape(key) + r'\}')
-            result = pattern.sub(str(value), result)
+            placeholder = '{' + key + '}'
+            result = result.replace(placeholder, str(value))
         
         return result
 

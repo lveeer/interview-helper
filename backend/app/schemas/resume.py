@@ -13,8 +13,20 @@ class ResumeParse(BaseModel):
     education: List[Dict[str, Any]]
     experience: List[Dict[str, Any]]
     skills: List[str]
+    skills_raw: List[str] = []
     projects: List[Dict[str, Any]]
     highlights: List[str]
+
+
+class ResumeListItem(BaseModel):
+    """简历列表项 - 轻量级响应模型"""
+    id: int
+    file_name: str
+    file_type: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
 
 
 class ResumeResponse(BaseModel):
@@ -26,6 +38,7 @@ class ResumeResponse(BaseModel):
     education: Optional[List[Dict[str, Any]]] = None
     experience: Optional[List[Dict[str, Any]]] = None
     skills: Optional[List[str]] = None
+    skills_raw: Optional[List[str]] = None
     projects: Optional[List[Dict[str, Any]]] = None
     highlights: Optional[List[str]] = None
     current_version: Optional[str] = None
@@ -74,6 +87,19 @@ class ResumeResponse(BaseModel):
     @classmethod
     def parse_skills(cls, v: Optional[Union[str, List]]) -> Optional[List]:
         """解析技能的 JSON 字符串"""
+        if v is None:
+            return None
+        if isinstance(v, str):
+            try:
+                return json.loads(v)
+            except json.JSONDecodeError:
+                return []
+        return v
+
+    @field_validator('skills_raw', mode='before')
+    @classmethod
+    def parse_skills_raw(cls, v: Optional[Union[str, List]]) -> Optional[List]:
+        """解析专业技能原始内容的 JSON 字符串"""
         if v is None:
             return None
         if isinstance(v, str):

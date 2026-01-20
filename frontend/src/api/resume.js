@@ -109,3 +109,12 @@ export const restoreResumeVersion = (id, version) => {
     data: { version }
   })
 }
+
+// 重新解析简历
+export const reparseResume = (id) => {
+  return request({
+    url: `/resume/${id}/reparse`,
+    method: 'post',
+    timeout: 60000
+  })
+}

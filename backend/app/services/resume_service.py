@@ -16,7 +16,7 @@ class ResumeParser:
     @staticmethod
     def _extract_text_with_unstructured(file_path: str) -> str:
         """
-        提取文档文本 - 使用 pypdf 作为主要方法
+        提取文档文本 - 使用多种方法
 
         Args:
             file_path: 文档文件路径
@@ -24,43 +24,93 @@ class ResumeParser:
         Returns:
             提取的文本内容
         """
-        try:
-            import pypdf
+        file_ext = os.path.splitext(file_path)[1].lower()
+        logger.info(f"开始提取文档文本，文件类型: {file_ext}")
 
-            file_ext = os.path.splitext(file_path)[1].lower()
-
-            if file_ext == '.pdf':
-                # 使用 pypdf 提取 PDF 文本
-                reader = pypdf.PdfReader(file_path)
-                text_content = ""
-                for page in reader.pages:
-                    text_content += page.extract_text() + "\n"
-                logger.info(f"pypdf 成功提取 {len(text_content)} 字符，共 {len(reader.pages)} 页")
+        # 1. 优先处理文本文件
+        if file_ext == '.txt':
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    text_content = f.read()
+                logger.info(f"成功提取文本文件，共 {len(text_content)} 字符")
                 return text_content
+            except UnicodeDecodeError:
+                # 尝试其他编码
+                try:
+                    with open(file_path, 'r', encoding='gbk') as f:
+                        text_content = f.read()
+                    logger.info(f"成功提取文本文件（GBK编码），共 {len(text_content)} 字符")
+                    return text_content
+                except Exception as e:
+                    logger.error(f"文本文件读取失败: {e}")
+                    raise Exception(f"文本文件读取失败: {str(e)}")
 
-            elif file_ext in ['.docx', '.doc']:
-                # 使用 docx2txt 提取 Word 文本
+        # 2. 处理 PDF 文件
+        if file_ext == '.pdf':
+            try:
+                import pdfplumber
+                text_content = ""
+                with pdfplumber.open(file_path) as pdf:
+                    for page in pdf.pages:
+                        # 提取文本，保持布局顺序
+                        page_text = page.extract_text()
+                        if page_text:
+                            text_content += page_text + "\n"
+                        
+                        # 提取表格（PDF 中的表格信息）
+                        tables = page.extract_tables()
+                        if tables:
+                            for table in tables:
+                                for row in table:
+                                    row_text = " | ".join([str(cell) if cell else "" for cell in row])
+                                    if row_text.strip():
+                                        text_content += row_text + "\n"
+                logger.info(f"pdfplumber 成功提取 PDF，共 {len(text_content)} 字符，{len(pdf.pages)} 页")
+                return text_content
+            except ImportError:
+                logger.warning("pdfplumber 未安装，尝试使用 pypdf")
+                # 回退到 pypdf
+                try:
+                    import pypdf
+                    reader = pypdf.PdfReader(file_path)
+                    text_content = ""
+                    for page in reader.pages:
+                        text_content += page.extract_text() + "\n"
+                    logger.info(f"pypdf 成功提取 PDF，共 {len(text_content)} 字符，{len(reader.pages)} 页")
+                    return text_content
+                except Exception as e:
+                    logger.error(f"pypdf 也失败: {e}")
+            except Exception as e:
+                logger.error(f"PDF 提取失败: {e}")
+
+        # 3. 处理 Word 文件
+        if file_ext in ['.docx', '.doc']:
+            try:
                 import docx2txt
                 text_content = docx2txt.process(file_path)
-                logger.info(f"docx2txt 成功提取 {len(text_content)} 字符")
+                logger.info(f"docx2txt 成功提取 Word 文档，共 {len(text_content)} 字符")
                 return text_content
+            except ImportError:
+                logger.warning("docx2txt 未安装，尝试使用其他方法")
+            except Exception as e:
+                logger.error(f"Word 文档提取失败: {e}")
 
-            else:
-                # 其他格式尝试使用 unstructured
-                from unstructured.partition.auto import partition
-                elements = partition(filename=file_path)
-                text_content = ""
-                for element in elements:
-                    text_content += str(element) + "\n"
-                logger.info(f"unstructured.io 成功提取 {len(text_content)} 字符，共 {len(elements)} 个元素")
-                return text_content
-
-        except ImportError as e:
-            logger.error(f"缺少必要的库: {e}")
-            raise Exception(f"文档文本提取失败，缺少必要的库: {str(e)}")
+        # 4. 尝试使用 unstructured（处理其他格式）
+        try:
+            from unstructured.partition.auto import partition
+            elements = partition(filename=file_path)
+            text_content = ""
+            for element in elements:
+                text_content += str(element) + "\n"
+            logger.info(f"unstructured.io 成功提取，共 {len(text_content)} 字符，{len(elements)} 个元素")
+            return text_content
+        except ImportError:
+            logger.warning("unstructured 未安装")
         except Exception as e:
-            logger.error(f"文档文本提取失败: {e}", exc_info=True)
-            raise Exception(f"文档文本提取失败: {str(e)}")
+            logger.warning(f"unstructured 提取失败: {e}")
+
+        # 5. 如果所有方法都失败，返回错误
+        raise Exception(f"无法提取文件 {file_ext} 的文本内容，请检查文件格式或安装相应的依赖库")
 
     @staticmethod
     def parse_resume(file_path: str) -> Dict[str, Any]:
@@ -106,15 +156,19 @@ class ResumeParser:
         info = {}
         lines = text.split('\n')
 
-        # 提取姓名（通常在开头，2-4个汉字）
-        for line in lines[:5]:  # 检查前5行
+        # 提取姓名（格式：姓名（职位）或纯姓名）
+        for line in lines[:10]:  # 检查前10行
             line = line.strip()
-            # 排除明显不是姓名的行
-            if len(line) >= 2 and len(line) <= 4 and not any(
-                keyword in line for keyword in ['简历', '个人', '姓名', '电话', '邮箱', '地址']
-            ):
-                # 简单验证：主要是汉字
-                if re.match(r'^[\u4e00-\u9fa5]{2,4}$', line):
+            # 匹配格式：谭永锋（后端开发工程师）
+            match = re.match(r'^([\u4e00-\u9fa5]{2,4})\（[\u4e00-\u9fa5（）]{2,10}）$', line)
+            if match:
+                info['name'] = match.group(1)
+                break
+            
+            # 匹配纯姓名（2-4个汉字）
+            if re.match(r'^[\u4e00-\u9fa5]{2,4}$', line):
+                # 排除明显不是姓名的行
+                if not any(keyword in line for keyword in ['简历', '个人', '姓名', '电话', '邮箱', '地址', '经历', '教育', '项目', '技能', '证书']):
                     info['name'] = line
                     break
 
@@ -145,26 +199,19 @@ class ResumeParser:
             if any(keyword in line for keyword in address_keywords):
                 # 排除电话行
                 if not re.search(r'1[3-9]\d{9}', line):
-                    info['address'] = line.strip()
-                    break
+                    # 清理地址（去除多余空格）
+                    address = re.sub(r'\s+', '', line.strip())
+                    if len(address) > 3:  # 至少3个字符
+                        info['address'] = address
+                        break
 
-        # 提取性别
-        if '男' in text or '女' in text:
-            if '男' in text and '女' not in text:
-                info['gender'] = '男'
-            elif '女' in text and '男' not in text:
-                info['gender'] = '女'
-
-        # 提取年龄/出生日期
-        age_pattern = r'(\d{2,3})\s*岁'
+        # 提取年龄
+        age_pattern = r'(\d{1,3})\s*岁'
         age_match = re.search(age_pattern, text)
         if age_match:
-            info['age'] = int(age_match.group(1))
-
-        birth_pattern = r'(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日'
-        birth_match = re.search(birth_pattern, text)
-        if birth_match:
-            info['birth_date'] = f"{birth_match.group(1)}-{birth_match.group(2)}-{birth_match.group(3)}"
+            age = int(age_match.group(1))
+            if 1 < age < 100:  # 合理的年龄范围
+                info['age'] = age
 
         return info
 
@@ -482,166 +529,194 @@ class ResumeParser:
         highlights = []
         return highlights
 
+    @staticmethod
+    def _extract_experience_description(text: str, exp_info: Dict[str, Any]) -> str:
+        """
+        从原始文本中提取完整的工作经历描述
+        
+        Args:
+            text: 简历全文
+            exp_info: LLM 解析的工作经历信息（包含 company, position, start_date 等）
+        
+        Returns:
+            完整的工作经历描述
+        """
+        lines = text.split('\n')
+        company = exp_info.get('company', '')
+        position = exp_info.get('position', '')
+        
+        # 查找包含公司名称的行
+        start_idx = -1
+        for i, line in enumerate(lines):
+            if company in line:
+                start_idx = i
+                break
+        
+        if start_idx == -1:
+            return ""
+        
+        # 收集从该行开始，直到下一个公司或章节标题的所有内容
+        description_lines = []
+        for i in range(start_idx, min(start_idx + 30, len(lines))):
+            line = lines[i].strip()
+            
+            # 如果遇到新的公司、教育、项目等章节，停止
+            if i > start_idx:
+                # 检查是否是新的公司（不包含当前公司名）
+                if any(keyword in line for keyword in ['公司', '有限公司', '科技']):
+                    if company not in line:
+                        break
+                # 检查是否是新的章节
+                if any(keyword in line for keyword in ['教育经历', '项目经历', '校园经历', '专业技能', '个人总结']):
+                    break
+            
+            # 跳过公司名、职位、时间等基本信息行
+            if i == start_idx:
+                continue
+            if re.match(r'^\d{4}', line):  # 时间行
+                continue
+            if position and position in line:  # 职位行
+                continue
+            
+            # 收集描述内容
+            if line and len(line) > 5:  # 至少5个字符
+                # 过滤掉明显的技能关键词行
+                if any(keyword in line for keyword in ['git', 'mysql', 'redis', '掌握', '熟悉', '了解']):
+                    # 如果这行很短且看起来像技能列表，跳过
+                    if len(line) < 20 and ' ' in line:
+                        continue
+                description_lines.append(line)
+        
+        return '\n'.join(description_lines)
+
+    @staticmethod
+    def _extract_project_description(text: str, proj_info: Dict[str, Any]) -> str:
+        """
+        从原始文本中提取完整的项目经历描述
+        
+        Args:
+            text: 简历全文
+            proj_info: LLM 解析的项目信息（包含 name, role, start_date 等）
+        
+        Returns:
+            完整的项目经历描述
+        """
+        lines = text.split('\n')
+        project_name = proj_info.get('name', '')
+        
+        # 查找包含项目名称的行
+        start_idx = -1
+        for i, line in enumerate(lines):
+            if project_name in line:
+                start_idx = i
+                break
+        
+        if start_idx == -1:
+            return ""
+        
+        # 收集从该行开始，直到下一个项目或章节标题的所有内容
+        description_lines = []
+        for i in range(start_idx, min(start_idx + 20, len(lines))):
+            line = lines[i].strip()
+            
+            # 如果遇到新的项目、公司、教育等章节，停止
+            if i > start_idx and any(keyword in line for keyword in ['项目', 'Project', '公司', '大学', '学院']):
+                # 检查是否是新的项目（不包含当前项目名）
+                if project_name not in line:
+                    break
+            
+            # 跳过项目名、角色、时间等基本信息行
+            if i == start_idx:
+                continue
+            if re.match(r'^\d{4}', line):  # 时间行
+                continue
+            if any(keyword in line for keyword in ['负责人', '参与者', '角色', 'Role']):
+                continue
+            
+            # 收集描述内容
+            if line and len(line) > 5:  # 至少5个字符
+                description_lines.append(line)
+        
+        return '\n'.join(description_lines)
+
 
 async def parse_resume_with_llm(file_path: str, llm_service) -> Dict[str, Any]:
     """
-    使用 LLM 增强的简历解析 - 直接从原始文本提取，不依赖基础解析
+    使用 LLM 增强的简历解析 - 直接上传文件到 LLM
 
     Args:
         file_path: 简历文件路径
         llm_service: LLM 服务实例
 
     Returns:
-        包含详细解析结果的字典
+        包含详细解析结果的字典，包括原始文本内容
     """
-    logger.info(f"开始使用 LLM 增强解析简历: {file_path}")
+    logger.info(f"开始使用 LLM 解析简历文件: {file_path}")
 
     try:
-        # 使用 unstructured.io 提取原始文本
-        raw_text = ResumeParser._extract_text_with_unstructured(file_path)
+        # 1. 提取原始文本内容
+        text_content = ResumeParser._extract_text_with_unstructured(file_path)
+        logger.info(f"原始文本提取完成，长度: {len(text_content)} 字符")
 
-        logger.info(f"原始文本提取完成，长度: {len(raw_text)} 字符")
+        from app.utils.prompt_loader import PromptLoader
 
-        # 初始化结果
-        result = {
-            "personal_info": {},
-            "education": [],
-            "experience": [],
-            "skills": [],
-            "projects": [],
-            "highlights": []
-        }
+        # 2. 构建完整的解析提示词
+        full_parse_prompt = PromptLoader.format_prompt(
+            'resume_full',
+            resume_text="[请直接解析上传的文档文件]"
+        )
 
-        # 使用 LLM 提取技能
+        logger.info("调用 LLM 文档解析 API...")
+        full_response = await llm_service.parse_document(
+            file_path=file_path,
+            prompt=full_parse_prompt,
+            temperature=0.3
+        )
+
+        logger.info(f"LLM 文档解析完成，响应长度: {len(full_response)} 字符")
+
+        # 3. 解析 JSON 响应
+        full_response = full_response.strip()
+
+        # 尝试提取 markdown 代码块中的 JSON
+        import re
+        json_pattern = r'```(?:json)?\s*([\s\S]*?)```'
+        json_match = re.search(json_pattern, full_response)
+        if json_match:
+            full_response = json_match.group(1).strip()
+
+        # 再次清理，确保没有多余的标记
+        full_response = full_response.strip()
+
         try:
-            from app.utils.prompt_loader import PromptLoader
-            skills_prompt = PromptLoader.format_prompt(
-                'resume_skills',
-                resume_text=raw_text
-            )
-            skills_response = await llm_service.generate_text(skills_prompt, temperature=0.3)
+            parsed_data = json.loads(full_response)
 
-            # 去除可能存在的 markdown 代码块标记
-            skills_response = skills_response.strip()
-            if skills_response.startswith("```json"):
-                skills_response = skills_response[7:]
-            elif skills_response.startswith("```"):
-                skills_response = skills_response[3:]
-            if skills_response.endswith("```"):
-                skills_response = skills_response[:-3]
-            skills_response = skills_response.strip()
+            # 验证并补全字段
+            result = {
+                "personal_info": parsed_data.get("personal_info", {}),
+                "education": parsed_data.get("education", []),
+                "experience": parsed_data.get("experience", []),
+                "skills": parsed_data.get("skills", []),
+                "skills_raw": parsed_data.get("skills_raw", []),
+                "projects": parsed_data.get("projects", []),
+                "highlights": parsed_data.get("highlights", [])
+            }
 
-            try:
-                llm_skills = json.loads(skills_response)
-                if isinstance(llm_skills, list):
-                    result['skills'] = llm_skills
-                    logger.info(f"LLM 技能提取完成，共 {len(result['skills'])} 个技能")
-            except json.JSONDecodeError:
-                logger.warning("LLM 技能解析失败，尝试使用基础提取")
-                result['skills'] = ResumeParser._extract_skills(raw_text)
-        except Exception as e:
-            logger.warning(f"LLM 技能提取失败: {e}，使用基础提取")
-            result['skills'] = ResumeParser._extract_skills(raw_text)
+            # 不再从原始文本中重新提取描述，直接使用 LLM 返回的完整信息
+            # 因为提示词已经要求 LLM 保留原始简历的完整信息
 
-        # 使用 LLM 提取教育背景
-        try:
-            from app.utils.prompt_loader import PromptLoader
-            education_prompt = PromptLoader.format_prompt(
-                'resume_education',
-                resume_text=raw_text
-            )
-            education_response = await llm_service.generate_text(education_prompt, temperature=0.3)
+            logger.info(f"LLM 解析成功 - "
+                               f"技能: {len(result['skills'])}, "
+                               f"教育: {len(result['education'])}, "
+                   f"经历: {len(result['experience'])}, "
+                   f"项目: {len(result['projects'])}")
 
-            # 去除可能存在的 markdown 代码块标记
-            education_response = education_response.strip()
-            if education_response.startswith("```json"):
-                education_response = education_response[7:]
-            elif education_response.startswith("```"):
-                education_response = education_response[3:]
-            if education_response.endswith("```"):
-                education_response = education_response[:-3]
-            education_response = education_response.strip()
-
-            try:
-                llm_education = json.loads(education_response)
-                if isinstance(llm_education, list):
-                    result['education'] = llm_education
-                    logger.info(f"LLM 教育背景提取完成，共 {len(result['education'])} 条记录")
-            except json.JSONDecodeError:
-                logger.warning("LLM 教育背景解析失败，尝试使用基础提取")
-                result['education'] = ResumeParser._extract_education(raw_text)
-        except Exception as e:
-            logger.warning(f"LLM 教育背景提取失败: {e}，使用基础提取")
-            result['education'] = ResumeParser._extract_education(raw_text)
-
-        # 使用 LLM 提取工作经历
-        try:
-            from app.utils.prompt_loader import PromptLoader
-            experience_prompt = PromptLoader.format_prompt(
-                'resume_experience',
-                resume_text=raw_text
-            )
-            experience_response = await llm_service.generate_text(experience_prompt, temperature=0.3)
-
-            # 去除可能存在的 markdown 代码块标记
-            experience_response = experience_response.strip()
-            if experience_response.startswith("```json"):
-                experience_response = experience_response[7:]
-            elif experience_response.startswith("```"):
-                experience_response = experience_response[3:]
-            if experience_response.endswith("```"):
-                experience_response = experience_response[:-3]
-            experience_response = experience_response.strip()
-
-            try:
-                llm_experience = json.loads(experience_response)
-                if isinstance(llm_experience, list):
-                    result['experience'] = llm_experience
-                    logger.info(f"LLM 工作经历提取完成，共 {len(result['experience'])} 条记录")
-            except json.JSONDecodeError:
-                logger.warning("LLM 工作经历解析失败，尝试使用基础提取")
-                result['experience'] = ResumeParser._extract_experience(raw_text)
-        except Exception as e:
-            logger.warning(f"LLM 工作经历提取失败: {e}，使用基础提取")
-            result['experience'] = ResumeParser._extract_experience(raw_text)
-
-        # 使用 LLM 提取亮点
-        try:
-            from app.utils.prompt_loader import PromptLoader
-            highlights_prompt = PromptLoader.format_prompt(
-                'resume_highlights',
-                resume_text=raw_text
-            )
-            highlights_response = await llm_service.generate_text(highlights_prompt, temperature=0.5)
-
-            # 去除可能存在的 markdown 代码块标记
-            highlights_response = highlights_response.strip()
-            if highlights_response.startswith("```json"):
-                highlights_response = highlights_response[7:]
-            elif highlights_response.startswith("```"):
-                highlights_response = highlights_response[3:]
-            if highlights_response.endswith("```"):
-                highlights_response = highlights_response[:-3]
-            highlights_response = highlights_response.strip()
-
-            try:
-                llm_highlights = json.loads(highlights_response)
-                if isinstance(llm_highlights, list):
-                    result['highlights'] = llm_highlights
-                    logger.info(f"LLM 亮点提取完成，共 {len(result['highlights'])} 个亮点")
-            except json.JSONDecodeError:
-                logger.warning("LLM 亮点解析失败")
-        except Exception as e:
-            logger.warning(f"LLM 亮点提取失败: {e}")
-
-        # 提取个人信息（使用正则表达式，这部分相对简单）
-        result['personal_info'] = ResumeParser._extract_personal_info(raw_text)
-        result['projects'] = ResumeParser._extract_projects(raw_text)
-
-        logger.info("LLM 增强简历解析完成")
-        return result
+            return result
+        except json.JSONDecodeError as je:
+            logger.error(f"LLM 文档解析 JSON 失败: {je}")
+            logger.error(f"响应内容前500字符: {full_response[:500]}")
+            raise Exception(f"JSON 解析失败: {str(je)}")
 
     except Exception as e:
-        logger.error(f"LLM 增强简历解析失败: {e}", exc_info=True)
-        # 如果 LLM 解析失败，返回基础解析结果
-        return ResumeParser.parse_resume(file_path)
+        logger.error(f"LLM 文档解析失败: {e}", exc_info=True)
+        raise Exception(f"简历解析失败: {str(e)}")

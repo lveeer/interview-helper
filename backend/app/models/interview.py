@@ -40,4 +40,4 @@ class Interview(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     user = relationship("User", backref="interviews")
-    resume = relationship("Resume", backref="interviews")
+    resume = relationship("Resume", back_populates="interviews", passive_deletes='all')
