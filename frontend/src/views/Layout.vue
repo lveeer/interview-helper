@@ -48,8 +48,8 @@
       <el-menu
         :default-active="activeMenu"
         router
-        background-color="#304156"
-        text-color="#bfcbd9"
+        background-color="#ffffff"
+        text-color="#606266"
         active-text-color="#409EFF"
         @select="closeMobileMenu"
       >
@@ -97,19 +97,36 @@
             </el-breadcrumb>
           </div>
 
-          <div class="user-info">
-            <el-dropdown @command="handleCommand">
-              <span class="el-dropdown-link">
-                <el-icon><User /></el-icon>
-                {{ userStore.username }}
-                <el-icon class="el-icon--right"><arrow-down /></el-icon>
-              </span>
-              <template #dropdown>
-                <el-dropdown-menu>
-                  <el-dropdown-item command="logout">退出登录</el-dropdown-item>
-                </el-dropdown-menu>
-              </template>
-            </el-dropdown>
+          <div class="header-right">
+            <!-- 通知铃铛 -->
+            <div class="notification-wrapper">
+              <el-badge :value="unreadCount" :hidden="unreadCount === 0" :max="99">
+                <el-button
+                  type="text"
+                  :icon="Bell"
+                  @click="drawerVisible = true"
+                  class="notification-btn"
+                >
+                  通知
+                </el-button>
+              </el-badge>
+            </div>
+
+            <!-- 用户信息 -->
+            <div class="user-info">
+              <el-dropdown @command="handleCommand">
+                <span class="el-dropdown-link">
+                  <el-icon><User /></el-icon>
+                  {{ userStore.username }}
+                  <el-icon class="el-icon--right"><arrow-down /></el-icon>
+                </span>
+                <template #dropdown>
+                  <el-dropdown-menu>
+                    <el-dropdown-item command="logout">退出登录</el-dropdown-item>
+                  </el-dropdown-menu>
+                </template>
+              </el-dropdown>
+            </div>
           </div>
         </div>
       </el-header>
@@ -118,6 +135,75 @@
         <router-view />
       </el-main>
     </el-container>
+
+    <!-- 通知抽屉 -->
+    <el-drawer
+      v-model="drawerVisible"
+      title="通知历史"
+      size="480px"
+      :destroy-on-close="true"
+    >
+      <template #header>
+        <div class="drawer-header">
+          <span class="drawer-title">通知历史</span>
+          <el-button
+            type="primary"
+            link
+            @click="handleMarkAllAsRead"
+            :disabled="unreadCount === 0"
+          >
+            全部标为已读
+          </el-button>
+        </div>
+      </template>
+
+      <div v-if="historyNotifications.length === 0" class="empty-notifications">
+        <el-empty description="暂无通知" />
+      </div>
+
+      <div v-else class="notifications-list">
+        <div
+          v-for="item in historyNotifications"
+          :key="item.id"
+          class="notification-item"
+          :class="{ unread: item.status !== 'read' }"
+          @click="handleNotificationClick(item)"
+        >
+          <div class="notification-content">
+            <div class="notification-header">
+              <el-tag :type="getNotificationTypeColor(item.notification_type)" size="small">
+                {{ getTaskTypeName(item.task_type) }}
+              </el-tag>
+              <span class="notification-time">
+                {{ formatTime(item.created_at) }}
+              </span>
+            </div>
+            <div class="notification-title">{{ item.task_title }}</div>
+            <div class="notification-message">{{ item.message }}</div>
+            <div v-if="item.error" class="notification-error">{{ item.error }}</div>
+          </div>
+          <div class="notification-actions">
+            <el-button
+              v-if="item.redirect_url"
+              type="primary"
+              link
+              size="small"
+              @click.stop="handleRedirect(item)"
+            >
+              查看
+            </el-button>
+            <el-button
+              type="danger"
+              link
+              size="small"
+              @click.stop="handleDeleteNotification(item.id)"
+            >
+              删除
+            </el-button>
+          </div>
+        </div>
+      </div>
+    </el-drawer>
   </el-container>
 </template>
 
@@ -126,6 +212,19 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import {
+  HomeFilled,
+  Document,
+  MagicStick,
+  TrendCharts,
+  ChatDotRound,
+  Reading,
+  Menu,
+  User,
+  ArrowDown,
+  Bell
+} from '@element-plus/icons-vue'
+import notificationManager from '@/utils/notification'
 
 const route = useRoute()
 const router = useRouter()
@@ -134,6 +233,128 @@ const userStore = useUserStore()
 // 移动端菜单状态
 const isMobileMenuOpen = ref(false)
 const isMobile = ref(false)
+
+// 通知相关状态
+const drawerVisible = ref(false)
+const unreadCount = ref(0)
+const historyNotifications = ref([])
+
+// 初始化通知管理器
+const initNotifications = () => {
+  if (!userStore.isLogin || !userStore.userInfo?.id) {
+    return
+  }
+
+  console.log('[Layout] 初始化通知系统')
+
+  // 设置 router 实例
+  notificationManager.setRouter(router)
+
+  // 连接 WebSocket
+  notificationManager.connect(userStore.userInfo.id, userStore.token)
+
+  // 注册事件监听器
+  notificationManager.on('history_loaded', (notifications) => {
+    historyNotifications.value = notifications
+    unreadCount.value = notificationManager.unreadCount
+  })
+
+  notificationManager.on('notification_updated', (notifications) => {
+    historyNotifications.value = notifications
+    unreadCount.value = notificationManager.unreadCount
+  })
+
+  notificationManager.on('unread_count_updated', (count) => {
+    unreadCount.value = count
+  })
+
+  notificationManager.on('task_status', (data) => {
+    if (data.status === 'completed' || data.status === 'failed') {
+      loadHistoryNotifications()
+    }
+  })
+
+  // 加载历史通知
+  loadHistoryNotifications()
+}
+
+// 加载历史通知
+const loadHistoryNotifications = async () => {
+  await notificationManager.loadHistoryNotifications(userStore.token)
+  historyNotifications.value = notificationManager.historyNotifications
+  unreadCount.value = notificationManager.unreadCount
+}
+
+// 标记通知为已读
+const handleMarkAsRead = async (notificationId) => {
+  await notificationManager.markAsRead(notificationId, userStore.token)
+  loadHistoryNotifications()
+}
+
+// 标记所有通知为已读
+const handleMarkAllAsRead = async () => {
+  await notificationManager.markAllAsRead(userStore.token)
+  loadHistoryNotifications()
+}
+
+// 删除通知
+const handleDeleteNotification = async (notificationId) => {
+  try {
+    await ElMessageBox.confirm('确定要删除这条通知吗？', '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    await notificationManager.deleteNotification(notificationId, userStore.token)
+    loadHistoryNotifications()
+    ElMessage.success('删除成功')
+  } catch {
+    // 用户取消
+  }
+}
+
+// 处理跳转
+const handleRedirect = (item) => {
+  if (item.redirect_url) {
+    handleMarkAsRead(item.id)
+    // 使用 Vue Router 跳转，避免页面重新加载
+    if (item.redirect_url.startsWith('http')) {
+      // 外部链接才使用 window.location.href
+      window.location.href = item.redirect_url
+    } else {
+      // 内部路由使用 router.push
+      router.push(item.redirect_url)
+    }
+  }
+}
+
+// 点击通知项
+const handleNotificationClick = (item) => {
+  if (item.status !== 'read') {
+    handleMarkAsRead(item.id)
+  }
+}
+
+// 获取通知类型颜色
+const getNotificationTypeColor = (type) => {
+  return notificationManager.getNotificationTypeColor(type)
+}
+
+// 获取任务类型名称
+const getTaskTypeName = (type) => {
+  return notificationManager.getTaskTypeName(type)
+}
+
+// 格式化时间
+const formatTime = (time) => {
+  return new Date(time).toLocaleString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
 
 // 检测是否为移动端
 const checkMobile = () => {
@@ -169,6 +390,7 @@ const handleCommand = async (command) => {
         cancelButtonText: '取消',
         type: 'warning'
       })
+      notificationManager.disconnect()
       userStore.logout()
       ElMessage.success('已退出登录')
       router.push('/login')
@@ -181,10 +403,12 @@ const handleCommand = async (command) => {
 onMounted(() => {
   checkMobile()
   window.addEventListener('resize', handleResize)
+  initNotifications()
 })
 
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize)
+  notificationManager.disconnect()
 })
 </script>
 
@@ -196,26 +420,26 @@ onUnmounted(() => {
 
 /* 侧边栏样式 */
 .el-aside {
-  background: linear-gradient(180deg, var(--sidebar-bg) 0%, var(--sidebar-bg-dark) 100%);
+  background: #ffffff;
   overflow-x: hidden;
   transition: all var(--transition-base);
   box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
   z-index: var(--z-index-sticky);
+  border-right: 1px solid var(--border-color-light);
 }
 
 /* 主容器样式 */
 .main-container {
-  margin-left: 20px;
 }
 
 /* Logo区域 */
 .logo {
-  height: 80px;
+  height: 60px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #1e293b 0%, #304156 50%, #1e293b 100%);
-  border-bottom: 1px solid rgba(64, 158, 255, 0.3);
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 50%, #ffffff 100%);
+  border-bottom: 1px solid var(--border-color-light);
   position: relative;
   overflow: hidden;
   padding: 0 var(--spacing-md);
@@ -278,12 +502,13 @@ onUnmounted(() => {
 .logo-title {
   font-size: 16px;
   font-weight: 700;
-  color: #ffffff;
-  letter-spacing: 1.5px;
-  background: linear-gradient(135deg, #ffffff 0%, #e8f4ff 100%);
+  color: #303133;
+  letter-spacing: 1px;
+  background: linear-gradient(135deg, #303133 0%, #409EFF 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+  white-space: nowrap;
 }
 
 .logo-subtitle {
@@ -301,10 +526,10 @@ onUnmounted(() => {
 }
 
 :deep(.el-menu-item) {
-  margin: var(--spacing-xs) var(--spacing-md);
+  margin: 0;
   border-radius: var(--radius-md);
   transition: all var(--transition-base);
-  color: var(--sidebar-text);
+  color: #303133;
   position: relative;
   overflow: hidden;
 }
@@ -323,14 +548,14 @@ onUnmounted(() => {
 }
 
 :deep(.el-menu-item:hover) {
-  background: rgba(255, 255, 255, 0.1);
-  color: var(--sidebar-text-hover);
+  background: rgba(64, 158, 255, 0.1);
+  color: #409EFF;
   transform: translateX(4px);
 }
 
 :deep(.el-menu-item.is-active) {
-  background: linear-gradient(90deg, rgba(64, 158, 255, 0.2) 0%, transparent 100%);
-  color: var(--primary-color);
+  background: linear-gradient(90deg, rgba(64, 158, 255, 0.15) 0%, transparent 100%);
+  color: #409EFF;
   font-weight: var(--font-weight-medium);
 }
 
@@ -338,13 +563,13 @@ onUnmounted(() => {
   height: 70%;
 }
 
-:deep(.el-menu-item .el-icon) {
-  font-size: 18px;
-  transition: transform var(--transition-base);
+:deep(.el-menu-item.is-active .el-icon) {
+  color: #409EFF;
 }
 
 :deep(.el-menu-item:hover .el-icon) {
   transform: scale(1.1);
+  color: #409EFF;
 }
 
 :deep(.el-menu-item span) {
@@ -603,5 +828,348 @@ onUnmounted(() => {
 .page-leave-to {
   opacity: 0;
   transform: translateY(-10px);
+}
+
+/* 通知相关样式 */
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 25px;
+}
+
+.notification-wrapper {
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+
+.notification-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  color: var(--text-primary);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  transition: all var(--transition-fast);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-md);
+}
+
+.notification-btn:hover {
+  color: var(--primary-color);
+  background: var(--bg-color);
+}
+
+.notification-btn .el-icon {
+  font-size: 20px;
+}
+
+:deep(.el-badge__content) {
+  transform: translateY(-50%) translateX(50%);
+  box-shadow: var(--shadow-sm);
+}
+
+/* 抽屉样式 */
+.drawer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding-bottom: var(--spacing-md);
+  border-bottom: 1px solid var(--border-color-light);
+  margin-bottom: var(--spacing-md);
+}
+
+.drawer-title {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.drawer-header .el-button {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  padding: var(--spacing-xs) var(--spacing-sm);
+}
+
+.drawer-header .el-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.empty-notifications {
+  padding: var(--spacing-xxl) 0;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+}
+
+.empty-notifications :deep(.el-empty) {
+  padding: 0;
+}
+
+.empty-notifications :deep(.el-empty__image) {
+  width: 120px;
+  height: 120px;
+}
+
+.empty-notifications :deep(.el-empty__description) {
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+  margin-top: var(--spacing-md);
+}
+
+.notifications-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 4px 0;
+  max-height: calc(100vh - 200px);
+  overflow-y: auto;
+}
+
+.notifications-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.notifications-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.notifications-list::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: var(--radius-round);
+  transition: background var(--transition-fast);
+}
+
+.notifications-list::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
+}
+
+.notification-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 16px;
+  background: var(--bg-color-white);
+  border: 1px solid var(--border-color-light);
+  border-radius: var(--radius-md);
+  transition: all var(--transition-fast);
+  gap: 12px;
+  box-shadow: var(--shadow-xs);
+}
+
+.notification-item.unread {
+  background: linear-gradient(135deg, #f0f7ff 0%, #e8f4ff 100%);
+  border-left: 3px solid var(--primary-color);
+  border-color: var(--primary-color);
+  box-shadow: var(--shadow-sm);
+}
+
+.notification-item:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+  border-color: var(--primary-color);
+}
+
+.notification-content {
+  flex: 1;
+  min-width: 0;
+  padding-right: 8px;
+}
+
+.notification-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.notification-header :deep(.el-tag) {
+  font-weight: var(--font-weight-medium);
+  border: none;
+  padding: 2px 8px;
+  height: 22px;
+  line-height: 1;
+}
+
+.notification-time {
+  font-size: var(--font-size-xs);
+  color: var(--text-placeholder);
+  white-space: nowrap;
+  padding-left: 8px;
+}
+
+.notification-title {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-primary);
+  margin-bottom: 12px;
+  word-break: break-word;
+  line-height: 1.5;
+}
+
+.notification-item.unread .notification-title {
+  font-weight: var(--font-weight-semibold);
+  color: var(--primary-color);
+}
+
+.notification-message {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  margin-bottom: 0;
+  line-height: 1.6;
+  word-break: break-word;
+  padding-top: 4px;
+}
+
+.notification-error {
+  font-size: var(--font-size-sm);
+  color: var(--color-danger);
+  margin-top: var(--spacing-sm);
+  padding: var(--spacing-sm);
+  background: rgba(245, 108, 108, 0.1);
+  border: 1px solid rgba(245, 108, 108, 0.2);
+  border-radius: var(--radius-sm);
+  line-height: 1.5;
+}
+
+.notification-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-left: 8px;
+  flex-shrink: 0;
+  align-items: flex-end;
+}
+
+.notification-actions .el-button {
+  min-width: 60px;
+  text-align: right;
+  padding: 4px 8px;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  transition: all var(--transition-fast);
+  height: auto;
+  line-height: 1.4;
+}
+
+.notification-actions .el-button:hover {
+  transform: scale(1.05);
+}
+
+/* 抽屉内部滚动条 */
+:deep(.el-drawer__body) {
+  padding: var(--spacing-lg);
+  overflow-y: auto;
+}
+
+:deep(.el-drawer__body)::-webkit-scrollbar {
+  width: 6px;
+}
+
+:deep(.el-drawer__body)::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+:deep(.el-drawer__body)::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: var(--radius-round);
+  transition: background var(--transition-fast);
+}
+
+:deep(.el-drawer__body)::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
+}
+
+/* 抽屉头部样式优化 */
+:deep(.el-drawer__header) {
+  margin-bottom: 0;
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-bottom: 1px solid var(--border-color-light);
+}
+
+:deep(.el-drawer__title) {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+}
+
+/* 抽屉整体样式 */
+:deep(.el-drawer) {
+  border-radius: 0;
+}
+
+:deep(.el-drawer__header) {
+  margin-bottom: 0;
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-bottom: 1px solid var(--border-color-light);
+  background: var(--bg-color-white);
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .header-right {
+    gap: var(--spacing-sm);
+  }
+
+  .notification-btn span {
+    display: none;
+  }
+
+  .notification-btn .el-icon {
+    font-size: 20px;
+  }
+
+  :deep(.el-drawer) {
+    width: 100% !important;
+  }
+
+  :deep(.el-drawer__body) {
+    padding: var(--spacing-md);
+  }
+
+  .notification-item {
+    flex-direction: column;
+    gap: var(--spacing-md);
+    padding: var(--spacing-md);
+  }
+
+  .notification-content {
+    padding-right: 0;
+    width: 100%;
+  }
+
+  .notification-header {
+    align-items: flex-start;
+  }
+
+  .notification-actions {
+    flex-direction: row;
+    margin-left: 0;
+    width: 100%;
+    align-items: center;
+    justify-content: flex-end;
+    padding-top: var(--spacing-sm);
+    border-top: 1px solid var(--border-color-light);
+    gap: var(--spacing-sm);
+  }
+
+  .notification-actions .el-button {
+    flex: 0 0 auto;
+    padding: var(--spacing-xs) var(--spacing-md);
+  }
+
+  .notifications-list {
+    max-height: calc(100vh - 250px);
+  }
 }
 </style>

@@ -14,7 +14,7 @@ logging.basicConfig(
     ]
 )
 
-from app.api import auth, resume, job, interview, knowledge, evaluation, statistics
+from app.api import auth, resume, job, interview, knowledge, evaluation, statistics, task_notification
 
 
 @asynccontextmanager
@@ -53,6 +53,7 @@ app.include_router(interview.router, prefix="/api/interview", tags=["模拟面�
 app.include_router(knowledge.router, prefix="/api/knowledge", tags=["知识库"])
 app.include_router(evaluation.router, prefix="/api/evaluation", tags=["评估反馈"])
 app.include_router(statistics.router, prefix="/api/statistics", tags=["统计数据"])
+app.include_router(task_notification.router, prefix="/api/task", tags=["任务通知"])
 
 
 @app.get("/")

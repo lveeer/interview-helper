@@ -23,8 +23,8 @@
   align-items: center;
   justify-content: space-between;
   margin-bottom: var(--spacing-md);
-  padding-bottom: var(--spacing-md);
-  border-bottom: 1px solid var(--border-color-light);
+  padding-bottom: 0;
+  border-bottom: none;
 }
 
 .card-title {

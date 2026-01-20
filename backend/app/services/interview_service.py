@@ -355,7 +355,8 @@ class InterviewService:
         job_description: str,
         num_questions: int = 10,
         user_id: int = None,
-        knowledge_doc_ids: List[int] = None
+        knowledge_doc_ids: List[int] = None,
+        task_id: str = None
     ):
         """
         异步生成面试问题并在完成后更新数据库
@@ -368,12 +369,32 @@ class InterviewService:
             num_questions: 问题数量
             user_id: 用户ID（用于知识库检索）
             knowledge_doc_ids: 指定的知识库文档ID列表（可选）
+            task_id: 任务ID（用于状态推送）
         """
+        from app.services.task_notification_service import task_notification_service
+        
         try:
+            # 通知任务开始
+            if task_id:
+                await task_notification_service.notify_started(
+                    task_id,
+                    message="正在生成面试问题..."
+                )
+            
             # 从知识库检索相关上下文（可选）
             knowledge_context = ""
             if user_id:
                 print(f"[异步生成] 开始从知识库检索相关内容，用户ID: {user_id}")
+                
+                # 通知进度
+                if task_id:
+                    await task_notification_service.notify_progress(
+                        task_id,
+                        progress=20,
+                        message="正在从知识库检索相关内容...",
+                        step="知识库检索"
+                    )
+                
                 knowledge_context = await InterviewService.retrieve_knowledge_context(
                     resume_data=resume_data,
                     job_description=job_description,
@@ -385,6 +406,15 @@ class InterviewService:
                     print(f"[异步生成] 知识库检索成功，上下文长度: {len(knowledge_context)}")
 
             # 生成面试问题
+            # 通知进度
+            if task_id:
+                await task_notification_service.notify_progress(
+                    task_id,
+                    progress=50,
+                    message="正在调用 LLM 生成面试问题...",
+                    step="问题生成"
+                )
+            
             questions = await InterviewService.generate_interview_questions(
                 resume_data,
                 job_description,
@@ -400,8 +430,28 @@ class InterviewService:
                 interview.generation_error = None
                 db.commit()
                 print(f"[异步生成] 面试 {interview_id} 问题生成成功，共 {len(questions)} 个问题")
+                
+                # 通知任务完成
+                if task_id:
+                    await task_notification_service.notify_completed(
+                        task_id,
+                        result={
+                            "interview_id": interview_id,
+                            "questions_count": len(questions),
+                            "status": interview.status
+                        },
+                        message=f"面试问题生成成功，共 {len(questions)} 个问题",
+                        redirect_url=f"/interview/{interview_id}",
+                        redirect_params={"interview_id": interview_id},
+                        db=db
+                    )
             else:
                 print(f"[异步生成] 面试 {interview_id} 不存在")
+                if task_id:
+                    await task_notification_service.notify_failed(
+                        task_id,
+                        error=f"面试 {interview_id} 不存在"
+                    )
 
         except Exception as e:
             # 生成失败，记录错误信息
@@ -416,3 +466,11 @@ class InterviewService:
                 print(f"[异步生成] 面试 {interview_id} 问题生成失败: {e}")
             else:
                 print(f"[异步生成] 面试 {interview_id} 不存在")
+            
+            # 通知任务失败
+            if task_id:
+                await task_notification_service.notify_failed(
+                    task_id,
+                    error=str(e),
+                    error_type=type(e).__name__
+                )

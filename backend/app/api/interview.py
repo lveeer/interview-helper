@@ -82,6 +82,24 @@ async def create_interview(
 
     # 启动后台异步任务生成面试问题
     from app.services.interview_service import InterviewService
+    from app.services.task_notification_service import task_notification_service
+    
+    # 注册任务通知
+    from app.models.task_notification import TaskType
+    task_id = f"interview_{db_interview.id}"
+    task_notification_service.register_task(
+        task_id=task_id,
+        user_id=current_user.id,
+        task_type=TaskType.INTERVIEW_GENERATION,
+        task_title=f"面试问题生成 - JD: {interview_data.job_description[:30]}...",
+        metadata={
+            "interview_id": db_interview.id,
+            "resume_id": interview_data.resume_id,
+            "job_title": interview_data.job_description[:50] if len(interview_data.job_description) > 50 else interview_data.job_description
+        },
+        db=db
+    )
+    
     asyncio.create_task(
         InterviewService.generate_interview_questions_async(
             db=db,
@@ -90,10 +108,11 @@ async def create_interview(
             job_description=interview_data.job_description,
             num_questions=10,
             user_id=current_user.id,
-            knowledge_doc_ids=interview_data.knowledge_doc_ids
+            knowledge_doc_ids=interview_data.knowledge_doc_ids,
+            task_id=task_id
         )
     )
-    print(f"[创建面试] 已启动后台任务生成面试问题")
+    print(f"[创建面试] 已启动后台任务生成面试问题，任务ID: {task_id}")
 
     # 构建响应数据，将 JSON 字符串解析为 Python 对象
     response_data = {

@@ -41,7 +41,7 @@
       </el-form>
     </el-card>
 
-    <el-card v-if="matchResult" style="margin-top: 20px;">
+    <el-card v-if="matchResult" class="mb-4">
       <template #header>
         <span>匹配结果</span>
       </template>
@@ -246,5 +246,9 @@ onMounted(() => {
 
 .el-alert li {
   margin-bottom: 5px;
+}
+
+.mb-4 {
+  margin-bottom: 20px;
 }
 </style>

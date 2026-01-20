@@ -58,7 +58,7 @@
       </el-col>
     </el-row>
 
-    <el-row :gutter="20" style="margin-top: 20px;">
+    <el-row :gutter="20" class="mb-4">
       <el-col :span="12">
         <el-card>
           <template #header>
@@ -94,8 +94,32 @@
               <span>最近面试</span>
             </div>
           </template>
-          <el-empty description="暂无面试记录" />
-        </el-card>
+          <div v-if="recentInterviews.length > 0" class="recent-interviews">
+            <div
+              v-for="interview in recentInterviews"
+              :key="interview.id"
+              class="interview-item"
+              @click="goToInterviewDetail(interview.id)"
+            >
+              <div class="interview-info">
+                <div class="interview-title">{{ interview.job_description || '未命名面试' }}</div>
+                <div class="interview-meta">
+                  <span class="interview-time">{{ formatDate(interview.created_at) }}</span>
+                  <el-tag
+                    :type="interview.status === 'completed' ? 'success' : 'warning'"
+                    size="small"
+                  >
+                    {{ interview.status === 'completed' ? '已完成' : '进行中' }}
+                  </el-tag>
+                </div>
+              </div>
+              <div class="interview-score">
+                <div class="score-value">{{ interview.total_score }}</div>
+                <div class="score-label">分</div>
+              </div>
+            </div>
+          </div>
+          <el-empty v-else description="暂无面试记录" /></el-card>
       </el-col>
     </el-row>
   </div>
@@ -112,6 +136,7 @@ const resumeCount = ref(0)
 const interviewCount = ref(0)
 const knowledgeCount = ref(0)
 const avgScore = ref(0)
+const recentInterviews = ref([])
 
 const loadData = async () => {
   try {
@@ -122,6 +147,7 @@ const loadData = async () => {
       interviewCount.value = res.data.interview_count || 0
       knowledgeCount.value = res.data.knowledge_count || 0
       avgScore.value = res.data.avg_score || 0
+      recentInterviews.value = res.data.recent_interviews || []
     }
   } catch (error) {
     console.error('加载数据失败:', error)
@@ -133,6 +159,28 @@ const goToInterview = () => router.push('/interview')
 const goToJobMatch = () => router.push('/job-match')
 const goToKnowledge = () => router.push('/knowledge')
 
+const formatDate = (dateString) => {
+  if (!dateString) return ''
+  const date = new Date(dateString)
+  const now = new Date()
+  const diff = now - date
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+  
+  if (days === 0) {
+    return '今天'
+  } else if (days === 1) {
+    return '昨天'
+  } else if (days < 7) {
+    return `${days}天前`
+  } else {
+    return date.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' })
+  }
+}
+
+const goToInterviewDetail = (id) => {
+  router.push(`/interview-record/${id}`)
+}
+
 onMounted(() => {
   loadData()
 })
@@ -143,7 +191,7 @@ onMounted(() => {
   animation: fadeIn var(--transition-base);
   position: relative;
   z-index: 1;
-  padding-top: var(--spacing-xl);
+  padding-top: var(--spacing-md);
 }
 
 @keyframes fadeIn {
@@ -219,15 +267,15 @@ onMounted(() => {
 }
 
 .stat-icon {
-  width: 64px;
-  height: 64px;
+  width: 80px;
+  height: 80px;
   border-radius: 12px;
   border-radius: var(--radius-lg, 12px);
   display: flex;
   align-items: center;
   justify-content: center;
   color: #fff;
-  font-size: 28px;
+  font-size: 36px;
   transition: all 0.2s;
   transition: all var(--transition-base, 0.2s);
   position: relative;
@@ -259,8 +307,8 @@ onMounted(() => {
 }
 
 .stat-value {
-  font-size: 28px;
-  font-size: var(--font-size-3xl, 28px);
+  font-size: 46px;
+  font-size: var(--font-size-3xl, 46px);
   font-weight: 700;
   font-weight: var(--font-weight-bold, 700);
   color: #303133;
@@ -271,8 +319,8 @@ onMounted(() => {
 }
 
 .stat-label {
-  font-size: 14px;
-  font-size: var(--font-size-sm, 14px);
+  font-size: 20px;
+  font-size: var(--font-size-xl, 20px);
   color: #909399;
   color: var(--text-secondary, #909399);
   font-weight: 500;
@@ -298,8 +346,7 @@ onMounted(() => {
 :deep(.el-card__header) {
   padding: 16px;
   padding: var(--spacing-lg, 16px);
-  border-bottom: 1px solid #e4e7ed;
-  border-bottom: 1px solid var(--border-color-light, #e4e7ed);
+  border-bottom: none;
   background: linear-gradient(180deg, #fafafa 0%, transparent 100%);
   background: linear-gradient(180deg, var(--bg-color-light, #fafafa) 0%, transparent 100%);
 }
@@ -501,4 +548,141 @@ onMounted(() => {
 :deep(.el-col:nth-child(2)) { animation-delay: 0.2s; }
 :deep(.el-col:nth-child(3)) { animation-delay: 0.3s; }
 :deep(.el-col:nth-child(4)) { animation-delay: 0.4s; }
+
+
+/* 最近面试列表样式 */
+.recent-interviews {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  gap: var(--spacing-sm, 12px);
+}
+
+.interview-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  padding: var(--spacing-md, 16px);
+  border-radius: 8px;
+  border-radius: var(--radius-md, 8px);
+  background: linear-gradient(135deg, #fafafa 0%, #f5f5f5 100%);
+  background: linear-gradient(135deg, var(--bg-color-light, #fafafa) 0%, var(--bg-color, #f5f5f5) 100%);
+  border: 1px solid var(--border-color-light);
+  cursor: pointer;
+  transition: all 0.2s;
+  transition: all var(--transition-base, 0.2s);
+  position: relative;
+  overflow: hidden;
+}
+
+.interview-item::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, transparent 0%, rgba(64, 158, 255, 0.05) 100%);
+  opacity: 0;
+  transition: opacity var(--transition-base);
+}
+
+.interview-item:hover {
+  transform: translateX(4px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--primary-color, #409EFF);
+}
+
+.interview-item:hover::before {
+  opacity: 1;
+}
+
+.interview-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.interview-title {
+  font-size: 15px;
+  font-size: var(--font-size-base, 15px);
+  font-weight: 600;
+  font-weight: var(--font-weight-semibold, 600);
+  color: #303133;
+  color: var(--text-primary, #303133);
+  margin-bottom: 8px;
+  margin-bottom: var(--spacing-xs, 8px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.interview-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  gap: var(--spacing-xs, 8px);
+}
+
+.interview-time {
+  font-size: 13px;
+  font-size: var(--font-size-sm, 13px);
+  color: #909399;
+  color: var(--text-secondary, #909399);
+}
+
+.interview-score {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  margin-left: 16px;
+  margin-left: var(--spacing-sm, 16px);
+  padding: 8px 12px;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background: linear-gradient(135deg, #409EFF 0%, #337ecc 100%);
+  background: linear-gradient(135deg, var(--primary-color, #409EFF) 0%, var(--primary-dark, #337ecc) 100%);
+  border-radius: 6px;
+  border-radius: var(--radius-sm, 6px);
+  color: #fff;
+  min-width: 60px;
+  justify-content: center;
+}
+
+.score-value {
+  font-size: 24px;
+  font-size: var(--font-size-xl, 24px);
+  font-weight: 700;
+  font-weight: var(--font-weight-bold, 700);
+  line-height: 1;
+}
+
+.score-label {
+  font-size: 12px;
+  font-size: var(--font-size-xs, 12px);
+  opacity: 0.9;
+}
+
+/* 响应式适配 */
+@media (max-width: 768px) {
+  .interview-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    gap: var(--spacing-sm, 12px);
+  }
+
+  .interview-meta {
+    flex-wrap: wrap;
+  }
+
+  .interview-score {
+    margin-left: 0;
+    width: 100%;
+  }
+}
+
+.mb-4 {
+  margin-bottom: 20px;
+}
+
 </style>

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Query
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Query, BackgroundTasks
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from typing import List, Optional
@@ -37,6 +37,8 @@ async def upload_resume(
 ):
     """上传简历文件并使用 LLM 增强解析"""
     from app.schemas.common import ApiResponse
+    import asyncio
+    import threading
 
     logger.info(f"用户 {current_user.id} 开始上传简历: {file.filename}")
 
@@ -80,40 +82,28 @@ async def upload_resume(
 
     logger.info(f"简历记录创建成功，ID: {db_resume.id}")
 
-    # 调用简历解析服务（使用 LLM 增强）
-    try:
-        from app.services.resume_service import parse_resume_with_llm
-        from app.services.llm_service import get_iflow_llm
+    # 生成任务ID
+    from app.models.task_notification import TaskType
+    task_id = f"resume_{db_resume.id}"
 
-        # 获取 LLM 服务
-        llm_service = await get_iflow_llm()
+    # 在独立线程中运行异步任务（fire-and-forget）
+    def run_async_task():
+        asyncio.run(
+            parse_resume_with_registration(
+                resume_id=db_resume.id,
+                file_path=file_path,
+                file_name=file.filename,
+                user_id=current_user.id,
+                task_id=task_id,
+                task_type=TaskType.RESUME_PARSE,
+                task_title=f"简历解析 - {file.filename}"
+            )
+        )
 
-        # 使用 LLM 增强解析
-        logger.info(f"开始解析简历 {db_resume.id}")
-        parsed_data = await parse_resume_with_llm(file_path, llm_service)
+    thread = threading.Thread(target=run_async_task, daemon=True)
+    thread.start()
 
-        # 保存解析结果
-        db_resume.personal_info = json.dumps(parsed_data.get("personal_info"), ensure_ascii=False)
-        db_resume.education = json.dumps(parsed_data.get("education"), ensure_ascii=False)
-        db_resume.experience = json.dumps(parsed_data.get("experience"), ensure_ascii=False)
-        db_resume.skills = json.dumps(parsed_data.get("skills"), ensure_ascii=False)
-        db_resume.projects = json.dumps(parsed_data.get("projects"), ensure_ascii=False)
-        db_resume.highlights = json.dumps(parsed_data.get("highlights"), ensure_ascii=False)
-        db.resume.skills_raw = json.dumps(parsed_data.get("skills_raw", []), ensure_ascii=False)
-        db.commit()
-
-        logger.info(f"简历 {db_resume.id} 解析完成 - "
-                   f"技能: {len(parsed_data.get('skills', []))}, "
-                   f"教育: {len(parsed_data.get('education', []))}, "
-                   f"经历: {len(parsed_data.get('experience', []))}, "
-                   f"项目: {len(parsed_data.get('projects', []))}")
-
-    except Exception as e:
-        logger.error(f"简历解析失败: {e}", exc_info=True)
-        # 解析失败不影响简历上传，继续返回
-        # 不再使用基础解析作为后备，因为正则表达式解析质量太差
-        logger.warning("跳过基础解析，简历已保存但未解析")
-
+    # 立即返回响应
     return ApiResponse(
         code=201,
         message="简历上传成功",
@@ -493,8 +483,10 @@ async def reparse_resume(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """重新解析简历（使用最新的提示词）"""
+    """重新解析简历（使用最新的提示词）- 异步处理"""
     from app.schemas.common import ApiResponse
+    import asyncio
+    import threading
 
     # 验证简历所有权
     resume = db.query(Resume).filter(
@@ -514,40 +506,37 @@ async def reparse_resume(
             detail="简历文件不存在"
         )
 
-    try:
-        from app.services.resume_service import parse_resume_with_llm
-        from app.services.llm_service import get_iflow_llm
+    # 生成任务ID
+    from app.models.task_notification import TaskType
+    task_id = f"resume_reparse_{resume_id}"
 
-        # 获取 LLM 服务
-        llm_service = await get_iflow_llm()
-
-        # 使用 LLM 重新解析
-        logger.info(f"开始重新解析简历 {resume_id}")
-        parsed_data = await parse_resume_with_llm(resume.file_path, llm_service)
-
-        # 更新解析结果
-        resume.personal_info = json.dumps(parsed_data.get("personal_info"), ensure_ascii=False)
-        resume.education = json.dumps(parsed_data.get("education"), ensure_ascii=False)
-        resume.experience = json.dumps(parsed_data.get("experience"), ensure_ascii=False)
-        resume.skills = json.dumps(parsed_data.get("skills"), ensure_ascii=False)
-        resume.skills_raw = json.dumps(parsed_data.get("skills_raw", []), ensure_ascii=False)
-        resume.projects = json.dumps(parsed_data.get("projects"), ensure_ascii=False)
-        resume.highlights = json.dumps(parsed_data.get("highlights"), ensure_ascii=False)
-        db.commit()
-
-        logger.info(f"简历 {resume_id} 重新解析完成")
-
-        return ApiResponse(
-            code=200,
-            message="重新解析成功",
-            data=ResumeResponse.model_validate(resume)
+    # 在独立线程中运行异步任务（fire-and-forget）
+    def run_async_task():
+        asyncio.run(
+            reparse_resume_with_registration(
+                resume_id=resume_id,
+                file_path=resume.file_path,
+                file_name=resume.file_name,
+                user_id=current_user.id,
+                task_id=task_id,
+                task_type=TaskType.RESUME_PARSE,
+                task_title=f"简历重新解析 - {resume.file_name}"
+            )
         )
-    except Exception as e:
-        logger.error(f"简历重新解析失败: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"重新解析失败: {str(e)}"
-        )
+
+    thread = threading.Thread(target=run_async_task, daemon=True)
+    thread.start()
+
+    # 立即返回响应
+    return ApiResponse(
+        code=200,
+        message="重新解析任务已启动",
+        data={
+            "task_id": task_id,
+            "resume_id": resume_id,
+            "status": "running"
+        }
+    )
 
 
 @router.get("/{resume_id}")
@@ -600,3 +589,273 @@ async def delete_resume(
     db.delete(resume)
     db.commit()
     return SuccessResponse()
+
+
+async def parse_resume_with_registration(
+    resume_id: int,
+    file_path: str,
+    file_name: str,
+    user_id: int,
+    task_id: str,
+    task_type: str,
+    task_title: str
+):
+    """包装函数：注册任务并执行解析（用于 BackgroundTasks）"""
+    from app.services.task_notification_service import task_notification_service
+    from app.core.database import SessionLocal
+    
+    db = SessionLocal()
+    try:
+        # 注册任务
+        await task_notification_service.register_task(
+            task_id=task_id,
+            user_id=user_id,
+            task_type=task_type,
+            task_title=task_title,
+            extra_data={
+                "resume_id": resume_id,
+                "file_name": file_name
+            },
+            db=db
+        )
+    finally:
+        db.close()
+    
+    # 执行解析
+    await parse_resume_async(
+        resume_id=resume_id,
+        file_path=file_path,
+        file_name=file_name,
+        user_id=user_id,
+        task_id=task_id
+    )
+
+
+async def reparse_resume_with_registration(
+    resume_id: int,
+    file_path: str,
+    file_name: str,
+    user_id: int,
+    task_id: str,
+    task_type: str,
+    task_title: str
+):
+    """包装函数：注册任务并执行重新解析（用于 BackgroundTasks）"""
+    from app.services.task_notification_service import task_notification_service
+    from app.core.database import SessionLocal
+    
+    db = SessionLocal()
+    try:
+        # 注册任务
+        await task_notification_service.register_task(
+            task_id=task_id,
+            user_id=user_id,
+            task_type=task_type,
+            task_title=task_title,
+            extra_data={
+                "resume_id": resume_id,
+                "file_name": file_name
+            },
+            db=db
+        )
+    finally:
+        db.close()
+    
+    # 执行重新解析
+    await reparse_resume_async(
+        resume_id=resume_id,
+        file_path=file_path,
+        file_name=file_name,
+        user_id=user_id,
+        task_id=task_id
+    )
+
+
+async def parse_resume_async(
+    resume_id: int,
+    file_path: str,
+    file_name: str,
+    user_id: int,
+    task_id: str
+):
+    """异步解析简历"""
+    from app.services.resume_service import parse_resume_with_llm
+    from app.services.llm_service import get_iflow_llm
+    from app.services.task_notification_service import task_notification_service
+    from app.core.database import SessionLocal
+    
+    # 创建新的数据库会话
+    db = SessionLocal()
+    
+    try:
+        # 通知任务开始
+        await task_notification_service.notify_started(
+            task_id,
+            message="正在解析简历..."
+        )
+        
+        # 获取 LLM 服务
+        llm_service = await get_iflow_llm()
+        
+        # 通知进度
+        await task_notification_service.notify_progress(
+            task_id,
+            progress=30,
+            message="正在提取简历内容...",
+            step="内容提取"
+        )
+        
+        # 使用 LLM 增强解析
+        logger.info(f"开始解析简历 {resume_id}")
+        parsed_data = await parse_resume_with_llm(file_path, llm_service)
+        
+        # 通知进度
+        await task_notification_service.notify_progress(
+            task_id,
+            progress=70,
+            message="正在保存解析结果...",
+            step="保存数据"
+        )
+        
+        # 保存解析结果
+        resume = db.query(Resume).filter(Resume.id == resume_id).first()
+        if resume:
+            resume.personal_info = json.dumps(parsed_data.get("personal_info"), ensure_ascii=False)
+            resume.education = json.dumps(parsed_data.get("education"), ensure_ascii=False)
+            resume.experience = json.dumps(parsed_data.get("experience"), ensure_ascii=False)
+            resume.skills = json.dumps(parsed_data.get("skills"), ensure_ascii=False)
+            resume.projects = json.dumps(parsed_data.get("projects"), ensure_ascii=False)
+            resume.highlights = json.dumps(parsed_data.get("highlights"), ensure_ascii=False)
+            resume.skills_raw = json.dumps(parsed_data.get("skills_raw", []), ensure_ascii=False)
+            db.commit()
+
+            logger.info(f"简历 {resume_id} 解析完成 - "
+                       f"技能: {len(parsed_data.get('skills', []))}, "
+                       f"教育: {len(parsed_data.get('education', []))}, "
+                       f"经历: {len(parsed_data.get('experience', []))}, "
+                       f"项目: {len(parsed_data.get('projects', []))}")
+        
+        # 通知任务完成
+        await task_notification_service.notify_completed(
+            task_id,
+            result={
+                "resume_id": resume_id,
+                "skills_count": len(parsed_data.get('skills', [])),
+                "education_count": len(parsed_data.get('education', [])),
+                "experience_count": len(parsed_data.get('experience', [])),
+                "projects_count": len(parsed_data.get('projects', []))
+            },
+            message=f"简历解析完成！提取了 {len(parsed_data.get('skills', []))} 项技能",
+            redirect_url="/resume",
+            redirect_params=None,
+            db=db
+        )
+        
+    except Exception as e:
+        logger.error(f"简历解析失败: {e}", exc_info=True)
+        db.rollback()
+        
+        # 通知任务失败
+        await task_notification_service.notify_failed(
+            task_id,
+            error=str(e),
+            error_type=type(e).__name__,
+            db=db
+        )
+    finally:
+        db.close()
+
+
+async def reparse_resume_async(
+    resume_id: int,
+    file_path: str,
+    file_name: str,
+    user_id: int,
+    task_id: str
+):
+    """异步重新解析简历"""
+    from app.services.resume_service import parse_resume_with_llm
+    from app.services.llm_service import get_iflow_llm
+    from app.services.task_notification_service import task_notification_service
+    from app.core.database import SessionLocal
+    
+    # 创建新的数据库会话
+    db = SessionLocal()
+    
+    try:
+        # 通知任务开始
+        await task_notification_service.notify_started(
+            task_id,
+            message="正在重新解析简历..."
+        )
+        
+        # 获取 LLM 服务
+        llm_service = await get_iflow_llm()
+        
+        # 通知进度
+        await task_notification_service.notify_progress(
+            task_id,
+            progress=30,
+            message="正在提取简历内容...",
+            step="内容提取"
+        )
+        
+        # 使用 LLM 重新解析
+        logger.info(f"开始重新解析简历 {resume_id}")
+        parsed_data = await parse_resume_with_llm(file_path, llm_service)
+        
+        # 通知进度
+        await task_notification_service.notify_progress(
+            task_id,
+            progress=70,
+            message="正在保存解析结果...",
+            step="保存数据"
+        )
+        
+        # 更新解析结果
+        resume = db.query(Resume).filter(Resume.id == resume_id).first()
+        if resume:
+            resume.personal_info = json.dumps(parsed_data.get("personal_info"), ensure_ascii=False)
+            resume.education = json.dumps(parsed_data.get("education"), ensure_ascii=False)
+            resume.experience = json.dumps(parsed_data.get("experience"), ensure_ascii=False)
+            resume.skills = json.dumps(parsed_data.get("skills"), ensure_ascii=False)
+            resume.skills_raw = json.dumps(parsed_data.get("skills_raw", []), ensure_ascii=False)
+            resume.projects = json.dumps(parsed_data.get("projects"), ensure_ascii=False)
+            resume.highlights = json.dumps(parsed_data.get("highlights"), ensure_ascii=False)
+            db.commit()
+
+            logger.info(f"简历 {resume_id} 重新解析完成 - "
+                       f"技能: {len(parsed_data.get('skills', []))}, "
+                       f"教育: {len(parsed_data.get('education', []))}, "
+                       f"经历: {len(parsed_data.get('experience', []))}, "
+                       f"项目: {len(parsed_data.get('projects', []))}")
+        
+        # 通知任务完成
+        await task_notification_service.notify_completed(
+            task_id,
+            result={
+                "resume_id": resume_id,
+                "skills_count": len(parsed_data.get('skills', [])),
+                "education_count": len(parsed_data.get('education', [])),
+                "experience_count": len(parsed_data.get('experience', [])),
+                "projects_count": len(parsed_data.get('projects', []))
+            },
+            message=f"简历重新解析完成！提取了 {len(parsed_data.get('skills', []))} 项技能",
+            redirect_url="/resume",
+            redirect_params=None,
+            db=db
+        )
+        
+    except Exception as e:
+        logger.error(f"简历重新解析失败: {e}", exc_info=True)
+        db.rollback()
+        
+        # 通知任务失败
+        await task_notification_service.notify_failed(
+            task_id,
+            error=str(e),
+            error_type=type(e).__name__,
+            db=db
+        )
+    finally:
+        db.close()
