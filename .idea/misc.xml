@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="Black">
+    <option name="sdkName" value="Python 3.11 (venv)" />
+  </component>
+  <component name="ProjectRootManager" version="2" project-jdk-name="Python 3.11 (interview-helper)" project-jdk-type="Python SDK" />
+  <component name="PythonConfigurationProvider">
+    <sdk>
+      <type name="Python SDK" />
+      <name>Python 3.11 (venv)</name>
+      <version>3.11</version>
+      <homePath>$PROJECT_DIR$/backend/venv/bin/python</homePath>
+    </sdk>
+  </component>
+</project>
