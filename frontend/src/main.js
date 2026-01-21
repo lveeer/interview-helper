@@ -9,6 +9,7 @@ import router from './router'
 // 引入自定义样式
 import './styles/variables.css'
 import './styles/common.css'
+import './styles/dark-mode.css'
 
 const app = createApp(App)
 const pinia = createPinia()

@@ -317,8 +317,11 @@ class NotificationManager {
         // 更新本地状态
         const notification = this.historyNotifications.find(n => n.id === notificationId)
         if (notification) {
+          // 只有在通知不是已读状态时才减少未读计数
+          if (notification.status !== 'read') {
+            this.unreadCount = Math.max(0, this.unreadCount - 1)
+          }
           notification.status = 'read'
-          this.unreadCount = Math.max(0, this.unreadCount - 1)
           this.emit('notification_updated', this.historyNotifications)
         }
         console.log('[NotificationManager] 标记已读成功:', notificationId)

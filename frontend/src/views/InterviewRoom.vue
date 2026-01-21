@@ -387,7 +387,7 @@ const speakText = (text) => {
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: #f5f5f7;
+  background: var(--bg-color);
   padding: 20px;
   box-sizing: border-box;
 }
@@ -396,20 +396,20 @@ const speakText = (text) => {
   flex: 1;
   display: flex;
   flex-direction: column;
-  background: #ffffff;
+  background: var(--bg-color-white);
   border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  box-shadow: var(--shadow-sm);
   overflow: hidden;
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  border: 1px solid var(--border-color-light);
 }
 
 /* ===== 顶部工具栏 - macOS 风格 ===== */
 .interview-header {
   padding: 12px 16px;
-  background: rgba(255, 255, 255, 0.8);
+  background: var(--glass-bg);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  border-bottom: 1px solid var(--border-color-light);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -430,32 +430,33 @@ const speakText = (text) => {
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  transition: opacity 0.15s ease;
+  cursor: pointer;
+  transition: all 0.2s;
 }
 
 .window-control.close {
-  background: #FF5F57;
+  background: var(--danger-color);
 }
 
 .window-control.minimize {
-  background: #FEBC2E;
+  background: var(--warning-color);
 }
 
 .window-control.maximize {
-  background: #28C840;
+  background: var(--success-color);
 }
 
 .title-text h1 {
   font-size: 13px;
   font-weight: 500;
-  color: #1d1d1f;
+  color: var(--text-primary);
   margin: 0;
   letter-spacing: -0.01em;
 }
 
 .end-button {
   padding: 6px 12px;
-  background: #FF3B30;
+  background: var(--danger-color);
   color: white;
   border: none;
   border-radius: 6px;
@@ -466,7 +467,7 @@ const speakText = (text) => {
 }
 
 .end-button:hover {
-  background: #FF453A;
+  background: #ff453a;
 }
 
 .end-button:active {
@@ -478,7 +479,7 @@ const speakText = (text) => {
   flex: 1;
   overflow-y: auto;
   padding: 20px;
-  background: #ffffff;
+  background: var(--bg-color-white);
   scroll-behavior: smooth;
 }
 
@@ -491,12 +492,12 @@ const speakText = (text) => {
 }
 
 .chat-container::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.2);
+  background: var(--border-color);
   border-radius: 4px;
 }
 
 .chat-container::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--text-secondary);
 }
 
 /* ===== 消息样式 ===== */
@@ -548,11 +549,11 @@ const speakText = (text) => {
 }
 
 .avatar-wrapper.interviewer {
-  background: #007AFF;
+  background: var(--primary-color);
 }
 
 .avatar-wrapper.candidate {
-  background: #34C759;
+  background: var(--success-color);
 }
 
 /* ===== 消息内容 ===== */
@@ -564,7 +565,7 @@ const speakText = (text) => {
 
 .message-role {
   font-size: 12px;
-  color: #86868b;
+  color: var(--text-secondary);
   margin-bottom: 4px;
   font-weight: 500;
   padding: 0 4px;
@@ -580,11 +581,11 @@ const speakText = (text) => {
 
 /* ===== 消息气泡 ===== */
 .message-text {
-  background: #f5f5f7;
+  background: var(--bg-color-light);
   padding: 12px 16px;
   border-radius: 18px;
   line-height: 1.5;
-  color: #1d1d1f;
+  color: var(--text-primary);
   font-size: 15px;
   font-weight: 400;
   letter-spacing: -0.01em;
@@ -595,7 +596,7 @@ const speakText = (text) => {
 }
 
 .message.candidate .message-text {
-  background: #007AFF;
+  background: var(--primary-color);
   color: white;
   border-top-right-radius: 4px;
 }
@@ -605,7 +606,7 @@ const speakText = (text) => {
   display: flex;
   gap: 4px;
   padding: 12px 16px;
-  background: #f5f5f7;
+  background: var(--bg-color-light);
   border-radius: 18px;
   border-top-left-radius: 4px;
   width: fit-content;
@@ -615,7 +616,7 @@ const speakText = (text) => {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #86868b;
+  background: var(--text-secondary);
   animation: typing 1.4s infinite ease-in-out;
 }
 
@@ -641,8 +642,8 @@ const speakText = (text) => {
 /* ===== 输入区域 ===== */
 .input-area {
   padding: 16px;
-  background: #ffffff;
-  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  background: var(--bg-color-white);
+  border-top: 1px solid var(--border-color-light);
 }
 
 .input-wrapper {
@@ -656,8 +657,8 @@ const speakText = (text) => {
   padding: 12px 16px;
   font-size: 15px;
   line-height: 1.5;
-  color: #1d1d1f;
-  background: #f5f5f7;
+  color: var(--text-primary);
+  background: var(--bg-color-light);
   border: 1px solid transparent;
   border-radius: 10px;
   resize: none;
@@ -667,21 +668,21 @@ const speakText = (text) => {
 }
 
 .input-field::placeholder {
-  color: #86868b;
+  color: var(--text-secondary);
 }
 
 .input-field:hover {
-  background: #ebebeb;
+  background: var(--border-color-light);
 }
 
 .input-field:focus {
-  background: #ffffff;
-  border-color: #007AFF;
+  background: var(--bg-color-white);
+  border-color: var(--primary-color);
   box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
 }
 
 .input-field:disabled {
-  background: #f5f5f7;
+  background: var(--bg-color-light);
   cursor: not-allowed;
   opacity: 0.6;
 }
@@ -704,9 +705,9 @@ const speakText = (text) => {
   align-items: center;
   gap: 6px;
   padding: 8px 12px;
-  background: #f5f5f7;
-  color: #1d1d1f;
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: var(--bg-color-light);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color-light);
   border-radius: 8px;
   font-size: 13px;
   font-weight: 500;
@@ -715,8 +716,8 @@ const speakText = (text) => {
 }
 
 .voice-button:hover:not(:disabled) {
-  background: #ebebeb;
-  border-color: rgba(0, 0, 0, 0.15);
+  background: var(--border-color-light);
+  border-color: var(--border-color);
 }
 
 .voice-button:active:not(:disabled) {
@@ -729,16 +730,16 @@ const speakText = (text) => {
 }
 
 .voice-button.recording {
-  background: #FF3B30;
+  background: var(--danger-color);
   color: white;
-  border-color: #FF3B30;
+  border-color: var(--danger-color);
   animation: recordingPulse 1.5s infinite;
 }
 
 .voice-button.active {
-  background: #34C759;
+  background: var(--success-color);
   color: white;
-  border-color: #34C759;
+  border-color: var(--success-color);
 }
 
 @keyframes recordingPulse {
@@ -763,7 +764,7 @@ const speakText = (text) => {
   align-items: center;
   gap: 6px;
   padding: 8px 16px;
-  background: #007AFF;
+  background: var(--primary-color);
   color: white;
   border: none;
   border-radius: 8px;
@@ -776,7 +777,7 @@ const speakText = (text) => {
 }
 
 .send-button:hover:not(:disabled) {
-  background: #0056CC;
+  background: var(--primary-dark);
 }
 
 .send-button:active:not(:disabled) {
@@ -786,11 +787,11 @@ const speakText = (text) => {
 .send-button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-  background: #007AFF;
+  background: var(--primary-color);
 }
 
 .send-button.loading {
-  background: #86868b;
+  background: var(--text-secondary);
   cursor: wait;
 }
 
@@ -852,107 +853,6 @@ const speakText = (text) => {
   .voice-button {
     flex: 1;
     justify-content: center;
-  }
-}
-
-/* ===== 深色模式 ===== */
-@media (prefers-color-scheme: dark) {
-  .interview-room {
-    background: #1c1c1e;
-  }
-
-  .interview-container {
-    background: #2c2c2e;
-    border-color: rgba(255, 255, 255, 0.1);
-  }
-
-  .interview-header {
-    background: rgba(44, 44, 46, 0.8);
-    border-bottom-color: rgba(255, 255, 255, 0.1);
-  }
-
-  .title-text h1 {
-    color: #f5f5f7;
-  }
-
-  .chat-container {
-    background: #2c2c2e;
-  }
-
-  .chat-container::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.2);
-  }
-
-  .chat-container::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.3);
-  }
-
-  .message-role {
-    color: #98989d;
-  }
-
-  .message-text {
-    background: #3a3a3c;
-    color: #f5f5f7;
-  }
-
-  .message.candidate .message-text {
-    background: #0A84FF;
-  }
-
-  .typing-indicator {
-    background: #3a3a3c;
-  }
-
-  .typing-indicator span {
-    background: #98989d;
-  }
-
-  .input-area {
-    background: #2c2c2e;
-    border-top-color: rgba(255, 255, 255, 0.1);
-  }
-
-  .input-field {
-    background: #3a3a3c;
-    color: #f5f5f7;
-  }
-
-  .input-field::placeholder {
-    color: #98989d;
-  }
-
-  .input-field:hover {
-    background: #48484a;
-  }
-
-  .input-field:focus {
-    background: #3a3a3c;
-    border-color: #0A84FF;
-    box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.2);
-  }
-
-  .voice-button {
-    background: #3a3a3c;
-    color: #f5f5f7;
-    border-color: rgba(255, 255, 255, 0.1);
-  }
-
-  .voice-button:hover:not(:disabled) {
-    background: #48484a;
-    border-color: rgba(255, 255, 255, 0.2);
-  }
-
-  .voice-button.recording {
-    background: #FF453A;
-    color: white;
-    border-color: #FF453A;
-  }
-
-  .voice-button.active {
-    background: #30D158;
-    color: white;
-    border-color: #30D158;
   }
 }
 </style>

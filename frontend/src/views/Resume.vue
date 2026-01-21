@@ -24,12 +24,12 @@
             {{ formatDate(row.created_at) }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="280" fixed="right">
+        <el-table-column label="操作" width="380" fixed="right">
           <template #default="{ row }">
-            <el-button type="primary" size="small" @click="viewResume(row)">
+            <el-button type="primary" size="small" @click="viewResume(row)" style="margin-right: 16px;">
               查看
             </el-button>
-            <el-button type="warning" size="small" @click="reparseResume(row.id)" :loading="reparseLoading[row.id]">
+            <el-button type="warning" size="small" @click="reparseResume(row.id)" :loading="reparseLoading[row.id]" style="margin-right: 16px;">
               重新解析
             </el-button>
             <el-button type="danger" size="small" @click="deleteResume(row.id)">
@@ -385,10 +385,10 @@ onMounted(() => {
   min-height: 600px;
   max-height: 75vh;
   overflow-y: auto;
-  background: #ffffff;
+  background: var(--bg-color-white);
   padding: 40px 50px;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
-  color: #24292f;
+  color: var(--text-primary);
   line-height: 1.6;
 }
 
@@ -407,16 +407,16 @@ onMounted(() => {
   align-items: center;
   font-size: 18px;
   font-weight: 600;
-  color: #24292f;
+  color: var(--text-primary);
   margin: 0 0 15px 0;
   padding-bottom: 8px;
-  border-bottom: 1px solid #d0d7de;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .section-marker {
   width: 4px;
   height: 18px;
-  background: #0969da;
+  background: var(--primary-color);
   border-radius: 2px;
   margin-right: 10px;
   flex-shrink: 0;
@@ -441,13 +441,13 @@ onMounted(() => {
 
 .info-label {
   font-weight: 500;
-  color: #656d76;
+  color: var(--text-secondary);
   min-width: 100px;
   flex-shrink: 0;
 }
 
 .info-value {
-  color: #24292f;
+  color: var(--text-primary);
   font-weight: 400;
 }
 
@@ -476,12 +476,12 @@ onMounted(() => {
 .edu-school {
   font-size: 16px;
   font-weight: 600;
-  color: #24292f;
+  color: var(--text-primary);
 }
 
 .edu-time {
   font-size: 13px;
-  color: #656d76;
+  color: var(--text-secondary);
 }
 
 .edu-details {
@@ -492,12 +492,12 @@ onMounted(() => {
 
 .edu-major {
   font-size: 14px;
-  color: #24292f;
+  color: var(--text-primary);
 }
 
 .edu-degree {
   font-size: 14px;
-  color: #656d76;
+  color: var(--text-secondary);
 }
 
 /* 工作经验 */
@@ -531,25 +531,25 @@ onMounted(() => {
 .exp-company {
   font-size: 16px;
   font-weight: 600;
-  color: #24292f;
+  color: var(--text-primary);
 }
 
 .exp-position {
   font-size: 14px;
-  color: #0969da;
+  color: var(--primary-color);
   font-weight: 500;
 }
 
 .exp-time {
   font-size: 13px;
-  color: #656d76;
+  color: var(--text-secondary);
   white-space: nowrap;
 }
 
 .exp-description {
   font-size: 14px;
   line-height: 1.8;
-  color: #424a53;
+  color: var(--text-regular);
   margin-bottom: 10px;
   text-align: justify;
 }
@@ -585,25 +585,25 @@ onMounted(() => {
 .project-name {
   font-size: 16px;
   font-weight: 600;
-  color: #24292f;
+  color: var(--text-primary);
 }
 
 .project-role {
   font-size: 14px;
-  color: #8250df;
+  color: var(--info-color);
   font-weight: 500;
 }
 
 .project-time {
   font-size: 13px;
-  color: #656d76;
+  color: var(--text-secondary);
   white-space: nowrap;
 }
 
 .project-description {
   font-size: 14px;
   line-height: 1.8;
-  color: #424a53;
+  color: var(--text-regular);
   margin-bottom: 10px;
   text-align: justify;
 }
@@ -618,7 +618,7 @@ onMounted(() => {
 .achievements-list li {
   font-size: 14px;
   line-height: 1.8;
-  color: #424a53;
+  color: var(--text-regular);
   margin-bottom: 5px;
   text-align: justify;
 }
@@ -626,17 +626,17 @@ onMounted(() => {
 /* 技术栈 */
 .tech-stack {
   font-size: 13px;
-  color: #656d76;
+  color: var(--text-secondary);
   margin: 8px 0;
 }
 
 .tech-label {
   font-weight: 500;
-  color: #656d76;
+  color: var(--text-secondary);
 }
 
 .tech-value {
-  color: #0969da;
+  color: var(--primary-color);
 }
 
 /* 技能网格 */
@@ -649,20 +649,20 @@ onMounted(() => {
 .skill-tag {
   display: inline-block;
   padding: 6px 12px;
-  background: #f6f8fa;
-  border: 1px solid #d0d7de;
+  background: var(--bg-color-light);
+  border: 1px solid var(--border-color);
   border-radius: 6px;
   font-size: 13px;
-  color: #24292f;
+  color: var(--text-primary);
   font-weight: 400;
 }
 
 /* 证书列表 */
 .cert-item {
   font-size: 14px;
-  color: #24292f;
+  color: var(--text-primary);
   padding: 8px 0;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--border-color-light);
 }
 
 .cert-item:last-child {
@@ -673,9 +673,9 @@ onMounted(() => {
 .skill-raw-item {
   font-size: 14px;
   line-height: 1.8;
-  color: #424a53;
+  color: var(--text-regular);
   padding: 10px 0;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--border-color-light);
   text-align: justify;
 }
 
@@ -687,13 +687,13 @@ onMounted(() => {
 .summary-text {
   font-size: 14px;
   line-height: 1.8;
-  color: #424a53;
+  color: var(--text-regular);
   text-align: justify;
 }
 
 /* 博客链接 */
 .blog-link {
-  color: #0969da;
+  color: var(--primary-color);
   text-decoration: none;
   font-size: 14px;
 }
@@ -708,15 +708,15 @@ onMounted(() => {
 }
 
 .resume-template::-webkit-scrollbar-track {
-  background: #f6f8fa;
+  background: var(--bg-color-light);
 }
 
 .resume-template::-webkit-scrollbar-thumb {
-  background: #d0d7de;
+  background: var(--border-color);
   border-radius: 4px;
 }
 
 .resume-template::-webkit-scrollbar-thumb:hover {
-  background: #afb8c1;
+  background: var(--text-secondary);
 }
 </style>

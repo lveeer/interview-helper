@@ -208,3 +208,449 @@
   --color-grey: #9E9E9E;
   --color-blue-grey: #607D8B;
 }
+
+/* ===== 黑暗模式 Dark Mode ===== */
+[data-theme='dark'] {
+  /* ===== 文本色 Text Colors (Dark) ===== */
+  --text-primary: #e5e7eb;
+  --text-regular: #d1d5db;
+  --text-secondary: #9ca3af;
+  --text-placeholder: #6b7280;
+  --text-disabled: #4b5563;
+
+  /* ===== 背景色 Background Colors (Dark) ===== */
+  --bg-color: #111827;
+  --bg-color-light: #1f2937;
+  --bg-color-dark: #0f172a;
+  --bg-color-white: #1f2937;
+  --bg-color-overlay: rgba(0, 0, 0, 0.7);
+
+  /* ===== 边框色 Border Colors (Dark) ===== */
+  --border-color: #374151;
+  --border-color-light: #4b5563;
+  --border-color-lighter: #6b7280;
+  --border-color-extra-light: #9ca3af;
+
+  /* ===== 侧边栏 Sidebar (Dark) ===== */
+  --sidebar-bg: #1f2937;
+  --sidebar-bg-dark: #111827;
+  --sidebar-text: #d1d5db;
+  --sidebar-text-hover: #e5e7eb;
+  --sidebar-text-active: #60a5fa;
+
+  /* ===== 头部 Header (Dark) ===== */
+  --header-bg: #1f2937;
+  --header-border: #374151;
+
+  /* ===== 卡片 Card (Dark) ===== */
+  --card-bg: #1f2937;
+  --card-border: #374151;
+  --card-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.3);
+
+  /* ===== 输入框 Input (Dark) ===== */
+  --input-border: #4b5563;
+  --input-bg: #111827;
+  --input-bg-disabled: #1f2937;
+
+  /* ===== 表格 Table (Dark) ===== */
+  --table-border: #374151;
+  --table-header-bg: #1f2937;
+  --table-row-hover: #374151;
+  --table-stripe-bg: #111827;
+
+  /* ===== 对话框 Dialog (Dark) ===== */
+  --dialog-header-bg: #1f2937;
+  --dialog-body-bg: #1f2937;
+  --dialog-footer-bg: #1f2937;
+  --dialog-border: #374151;
+
+  /* ===== 毛玻璃效果 Glassmorphism (Dark) ===== */
+  --glass-bg: rgba(31, 41, 55, 0.8);
+  --glass-bg-dark: rgba(17, 24, 39, 0.9);
+  --glass-border: rgba(75, 85, 99, 0.5);
+  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+
+  /* ===== 渐变 Gradients (Dark) ===== */
+  --gradient-glass: linear-gradient(135deg, rgba(31, 41, 55, 0.9) 0%, rgba(17, 24, 39, 0.8) 100%);
+  --gradient-soft: linear-gradient(180deg, rgba(31, 41, 55, 0.9) 0%, rgba(17, 24, 39, 0.8) 100%);
+
+  /* ===== 骨架屏 Skeleton (Dark) ===== */
+  --skeleton-bg: linear-gradient(90deg, #1f2937 25%, #374151 50%, #1f2937 75%);
+}
+
+[data-theme='dark'] .skeleton {
+  background: var(--skeleton-bg);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: var(--radius-sm);
+}
+
+/* ===== Element Plus 组件黑暗模式适配 ===== */
+html[data-theme='dark'] .el-popper {
+  background: var(--bg-color-white) !important;
+  border-color: var(--border-color) !important;
+}
+
+html[data-theme='dark'] .el-popper.is-light {
+  background: var(--bg-color-white) !important;
+  border-color: var(--border-color) !important;
+}
+
+[data-theme='dark'] .el-card {
+  background: var(--card-bg);
+  border-color: var(--card-border);
+}
+
+[data-theme='dark'] .el-card__header {
+  background: var(--bg-color-light);
+  border-bottom-color: var(--border-color);
+}
+
+[data-theme='dark'] .el-table {
+  background: var(--bg-color-white);
+  color: var(--text-primary);
+}
+
+[data-theme='dark'] .el-table th,
+[data-theme='dark'] .el-table tr {
+  background: var(--bg-color-white);
+}
+
+[data-theme='dark'] .el-table th.el-table__cell {
+  background: var(--table-header-bg);
+  color: var(--text-primary);
+}
+
+[data-theme='dark'] .el-table td.el-table__cell {
+  border-bottom-color: var(--table-border);
+}
+
+[data-theme='dark'] .el-table--enable-row-hover .el-table__body tr:hover > td.el-table__cell {
+  background: var(--table-row-hover);
+}
+
+[data-theme='dark'] .el-table__body tr.el-table__row--striped td.el-table__cell {
+  background: var(--table-stripe-bg);
+}
+
+[data-theme='dark'] .el-button--default {
+  background: var(--bg-color-light);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+[data-theme='dark'] .el-button--default:hover {
+  background: var(--border-color-light);
+  border-color: var(--border-color-light);
+  color: var(--text-primary);
+}
+
+[data-theme='dark'] .el-dialog {
+  background: var(--dialog-body-bg);
+}
+
+[data-theme='dark'] .el-dialog__header {
+  background: var(--dialog-header-bg);
+  border-bottom-color: var(--dialog-border);
+}
+
+[data-theme='dark'] .el-dialog__title {
+  color: var(--text-primary);
+}
+
+[data-theme='dark'] .el-dialog__body {
+  color: var(--text-primary);
+}
+
+[data-theme='dark'] .el-dialog__footer {
+  background: var(--dialog-footer-bg);
+  border-top-color: var(--dialog-border);
+}
+
+[data-theme='dark'] .el-drawer {
+  background: var(--bg-color-white);
+}
+
+[data-theme='dark'] .el-drawer__header {
+  background: var(--bg-color-light);
+  border-bottom-color: var(--border-color);
+}
+
+[data-theme='dark'] .el-drawer__title {
+  color: var(--text-primary);
+}
+
+[data-theme='dark'] .el-drawer__body {
+  color: var(--text-primary);
+}
+
+[data-theme='dark'] .el-input__wrapper {
+  background: var(--input-bg);
+  box-shadow: 0 0 0 1px var(--input-border) inset;
+}
+
+[data-theme='dark'] .el-input__wrapper:hover {
+  box-shadow: 0 0 0 1px var(--border-color-light) inset;
+}
+
+[data-theme='dark'] .el-input__wrapper.is-focus {
+  box-shadow: 0 0 0 1px var(--primary-color) inset;
+}
+
+[data-theme='dark'] .el-input__inner {
+  color: var(--text-primary);
+}
+
+[data-theme='dark'] .el-input__inner::placeholder {
+  color: var(--text-placeholder);
+}
+
+[data-theme='dark'] .el-textarea__inner {
+  background: var(--input-bg);
+  border-color: var(--input-border);
+  color: var(--text-primary);
+}
+
+[data-theme='dark'] .el-textarea__inner::placeholder {
+  color: var(--text-placeholder);
+}
+
+[data-theme='dark'] .el-textarea__inner:hover {
+  border-color: var(--border-color-light);
+}
+
+[data-theme='dark'] .el-textarea__inner:focus {
+  border-color: var(--primary-color);
+}
+
+html[data-theme='dark'] .el-select .el-input__wrapper,
+html[data-theme='dark'] .el-select .el-input__inner {
+  background-color: var(--input-bg) !important;
+  background: var(--input-bg) !important;
+}
+
+html[data-theme='dark'] .el-select .el-input__wrapper {
+  box-shadow: 0 0 0 1px var(--input-border) inset !important;
+}
+
+html[data-theme='dark'] .el-select .el-input__wrapper:hover {
+  box-shadow: 0 0 0 1px var(--border-color-light) inset !important;
+}
+
+html[data-theme='dark'] .el-select .el-input__wrapper.is-focus {
+  box-shadow: 0 0 0 1px var(--primary-color) inset !important;
+}
+
+html[data-theme='dark'] .el-select .el-input__inner {
+  color: var(--text-primary) !important;
+}
+
+html[data-theme='dark'] .el-select .el-input__inner::placeholder {
+  color: var(--text-placeholder) !important;
+}
+
+/* 直接覆盖所有输入框的背景色 */
+html[data-theme='dark'] .el-input__wrapper {
+  background-color: var(--input-bg) !important;
+}
+
+html[data-theme='dark'] .el-input__inner {
+  background-color: transparent !important;
+  color: var(--text-primary) !important;
+}
+
+html[data-theme='dark'] .el-select-dropdown {
+  background: var(--bg-color-white) !important;
+  border-color: var(--border-color) !important;
+}
+
+html[data-theme='dark'] .el-select-dropdown__wrap {
+  background: var(--bg-color-white) !important;
+  max-height: 274px;
+}
+
+html[data-theme='dark'] .el-select-dropdown__list {
+  background: var(--bg-color-white) !important;
+}
+
+html[data-theme='dark'] .el-select-dropdown__item {
+  color: var(--text-primary) !important;
+}
+
+html[data-theme='dark'] .el-select-dropdown__item:hover {
+  background: var(--bg-color-light) !important;
+}
+
+html[data-theme='dark'] .el-select-dropdown__item.is-selected {
+  color: var(--primary-color) !important;
+  background: rgba(64, 158, 255, 0.1) !important;
+}
+
+html[data-theme='dark'] .el-select-dropdown__item.is-disabled {
+  color: var(--text-disabled) !important;
+}
+
+html[data-theme='dark'] .el-select-dropdown__empty {
+  color: var(--text-secondary) !important;
+}
+
+html[data-theme='dark'] .el-select-group__title {
+  color: var(--text-secondary) !important;
+}
+
+html[data-theme='dark'] .el-select-group__wrap {
+  background: var(--bg-color-white) !important;
+}
+
+html[data-theme='dark'] .el-select-group__wrap:not(:last-of-type)::after {
+  background: var(--border-color-light) !important;
+}
+
+/* 滚动条样式 */
+html[data-theme='dark'] .el-select-dropdown__wrap::-webkit-scrollbar {
+  width: 8px;
+}
+
+html[data-theme='dark'] .el-select-dropdown__wrap::-webkit-scrollbar-thumb {
+  background: var(--border-color-light);
+  border-radius: 4px;
+}
+
+html[data-theme='dark'] .el-select-dropdown__wrap::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+html[data-theme='dark'] .el-dropdown-menu::-webkit-scrollbar {
+  width: 8px;
+}
+
+html[data-theme='dark'] .el-dropdown-menu::-webkit-scrollbar-thumb {
+  background: var(--border-color-light);
+  border-radius: 4px;
+}
+
+html[data-theme='dark'] .el-dropdown-menu::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+[data-theme='dark'] .el-empty {
+  color: var(--text-secondary);
+}
+
+[data-theme='dark'] .el-empty__description {
+  color: var(--text-secondary);
+}
+
+[data-theme='dark'] .el-breadcrumb__inner {
+  color: var(--text-secondary);
+}
+
+[data-theme='dark'] .el-breadcrumb__inner:hover {
+  color: var(--primary-color);
+}
+
+[data-theme='dark'] .el-breadcrumb__separator {
+  color: var(--text-placeholder);
+}
+
+html[data-theme='dark'] .el-dropdown-menu {
+  background: var(--bg-color-white) !important;
+  border-color: var(--border-color) !important;
+}
+
+html[data-theme='dark'] .el-dropdown-menu__item {
+  color: var(--text-primary) !important;
+}
+
+html[data-theme='dark'] .el-dropdown-menu__item:hover {
+  background: var(--bg-color-light) !important;
+  color: var(--primary-color) !important;
+}
+
+html[data-theme='dark'] .el-dropdown-menu__item.is-disabled {
+  color: var(--text-disabled) !important;
+}
+
+html[data-theme='dark'] .el-dropdown-menu__item.is-divided {
+  border-top-color: var(--border-color-light) !important;
+}
+
+[data-theme='dark'] .el-menu {
+  background: var(--bg-color-white);
+  border-right-color: var(--border-color);
+}
+
+[data-theme='dark'] .el-menu-item {
+  color: var(--text-primary);
+}
+
+[data-theme='dark'] .el-menu-item:hover {
+  background: var(--bg-color-light);
+  color: var(--primary-color);
+}
+
+[data-theme='dark'] .el-menu-item.is-active {
+  color: var(--primary-color);
+  background: rgba(64, 158, 255, 0.1);
+}
+
+[data-theme='dark'] .el-upload {
+  border-color: var(--border-color);
+}
+
+[data-theme='dark'] .el-upload-dragger {
+  background: var(--bg-color-light);
+  border-color: var(--border-color);
+}
+
+[data-theme='dark'] .el-upload-dragger:hover {
+  border-color: var(--primary-color);
+}
+
+[data-theme='dark'] .el-upload__text {
+  color: var(--text-primary);
+}
+
+[data-theme='dark'] .el-upload__tip {
+  color: var(--text-secondary);
+}
+
+[data-theme='dark'] .el-form-item__label {
+  color: var(--text-primary);
+}
+
+[data-theme='dark'] .el-tag {
+  background: var(--bg-color-light);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+[data-theme='dark'] .el-tag--primary {
+  background: rgba(64, 158, 255, 0.1);
+  border-color: rgba(64, 158, 255, 0.2);
+  color: var(--primary-color);
+}
+
+[data-theme='dark'] .el-tag--success {
+  background: rgba(103, 194, 58, 0.1);
+  border-color: rgba(103, 194, 58, 0.2);
+  color: var(--success-color);
+}
+
+[data-theme='dark'] .el-tag--warning {
+  background: rgba(230, 162, 60, 0.1);
+  border-color: rgba(230, 162, 60, 0.2);
+  color: var(--warning-color);
+}
+
+[data-theme='dark'] .el-tag--danger {
+  background: rgba(245, 108, 108, 0.1);
+  border-color: rgba(245, 108, 108, 0.2);
+  color: var(--danger-color);
+}
+
+[data-theme='dark'] .el-tag--info {
+  background: rgba(144, 147, 153, 0.1);
+  border-color: rgba(144, 147, 153, 0.2);
+  color: var(--text-secondary);
+}

@@ -4,7 +4,7 @@
       <el-col :span="6">
         <el-card class="stat-card">
           <div class="stat-content">
-            <div class="stat-icon" style="background-color: #409EFF;">
+            <div class="stat-icon" style="background-color: var(--primary-color);">
               <el-icon :size="30"><Document /></el-icon>
             </div>
             <div class="stat-info">
@@ -18,7 +18,7 @@
       <el-col :span="6">
         <el-card class="stat-card">
           <div class="stat-content">
-            <div class="stat-icon" style="background-color: #67C23A;">
+            <div class="stat-icon" style="background-color: var(--success-color);">
               <el-icon :size="30"><ChatDotRound /></el-icon>
             </div>
             <div class="stat-info">
@@ -32,7 +32,7 @@
       <el-col :span="6">
         <el-card class="stat-card">
           <div class="stat-content">
-            <div class="stat-icon" style="background-color: #E6A23C;">
+            <div class="stat-icon" style="background-color: var(--warning-color);">
               <el-icon :size="30"><Reading /></el-icon>
             </div>
             <div class="stat-info">
@@ -46,7 +46,7 @@
       <el-col :span="6">
         <el-card class="stat-card">
           <div class="stat-content">
-            <div class="stat-icon" style="background-color: #F56C6C;">
+            <div class="stat-icon" style="background-color: var(--danger-color);">
               <el-icon :size="30"><TrendCharts /></el-icon>
             </div>
             <div class="stat-info">
@@ -639,8 +639,7 @@ onMounted(() => {
   margin-left: var(--spacing-sm, 16px);
   padding: 8px 12px;
   padding: var(--spacing-xs) var(--spacing-sm);
-  background: linear-gradient(135deg, #409EFF 0%, #337ecc 100%);
-  background: linear-gradient(135deg, var(--primary-color, #409EFF) 0%, var(--primary-dark, #337ecc) 100%);
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
   border-radius: 6px;
   border-radius: var(--radius-sm, 6px);
   color: #fff;

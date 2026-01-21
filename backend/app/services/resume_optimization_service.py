@@ -79,7 +79,7 @@ class ResumeOptimizationService:
             analysis_response = await llm_service.generate_text(
                 analysis_prompt,
                 temperature=0.3,
-                max_tokens=2000
+                max_tokens=65535  # 使用最大 token 数以支持最详细的分析
             )
 
             logger.info(f"LLM 原始响应: {analysis_response[:500]}...")
@@ -167,37 +167,37 @@ class ResumeOptimizationService:
     "content_score": 0-100,
     "match_score": 0-100,
     "clarity_score": 0-100,
-    "strengths": ["优势1（必须包含与JD匹配的具体技能和经验）", "优势2"],
-    "weaknesses": ["不足1（必须包含JD要求但简历缺失的技能）", "不足2"],
+    "strengths": ["优势1（必须包含与JD匹配的具体技能和经验，50-100字详细说明）", "优势2"],
+    "weaknesses": ["不足1（必须包含JD要求但简历缺失的技能，50-100字详细说明）", "不足2"],
     "personal_analysis": {{
         "status": "good/warning/error",
-        "message": "分析说明",
+        "message": "分析说明（50-100字）",
         "included": ["已包含项"],
         "missing": ["缺失项"]
     }},
     "education_analysis": {{
         "status": "good/warning/error",
-        "message": "分析说明",
-        "suggestions": "改进建议"
+        "message": "分析说明（50-100字）",
+        "suggestions": "改进建议（50-100字）"
     }},
     "experience_analysis": {{
         "status": "good/warning/error",
-        "message": "分析说明（必须说明是否满足JD经验要求）",
-        "jd_experience_requirements": "JD对经验的具体要求",
-        "resume_experience_match": "简历经验匹配情况说明",
-        "issues": "存在问题",
-        "suggestions": "针对JD的改进建议"
+        "message": "分析说明（必须说明是否满足JD经验要求，50-100字）",
+        "jd_experience_requirements": "JD对经验的具体要求（50-100字）",
+        "resume_experience_match": "简历经验匹配情况说明（50-100字）",
+        "issues": "存在问题（50-100字）",
+        "suggestions": "针对JD的改进建议（80-150字）"
     }},
     "skills_analysis": {{
         "status": "good/warning/error",
-        "message": "分析说明",
+        "message": "分析说明（50-100字）",
         "jd_required_skills": ["JD要求技能1", "JD要求技能2"],
         "resume_matched_skills": ["简历匹配技能1", "简历匹配技能2"],
         "resume_missing_skills": ["缺失技能1", "缺失技能2"],
-        "match_details": "匹配度详细说明（如：5/8技能匹配，缺失MyBatis、分布式经验等）",
+        "match_details": "匹配度详细说明（如：5/8技能匹配，缺失MyBatis、分布式经验等，50-100字）",
         "hard_skills": ["硬技能1", "硬技能2"],
         "soft_skills": ["软技能1", "软技能2"],
-        "suggestions": "针对JD的技能改进建议"
+        "suggestions": "针对JD的技能改进建议（80-150字）"
     }}
 }}
 
@@ -244,31 +244,31 @@ class ResumeOptimizationService:
     "content_score": 0-100,
     "match_score": 0-100,
     "clarity_score": 0-100,
-    "strengths": ["优势1", "优势2"],
-    "weaknesses": ["不足1", "不足2"],
+    "strengths": ["优势1（50-100字详细说明）", "优势2"],
+    "weaknesses": ["不足1（50-100字详细说明）", "不足2"],
     "personal_analysis": {{
         "status": "good/warning/error",
-        "message": "分析说明",
+        "message": "分析说明（50-100字）",
         "included": ["已包含项"],
         "missing": ["缺失项"]
     }},
     "education_analysis": {{
         "status": "good/warning/error",
-        "message": "分析说明",
-        "suggestions": "改进建议"
+        "message": "分析说明（50-100字）",
+        "suggestions": "改进建议（50-100字）"
     }},
     "experience_analysis": {{
         "status": "good/warning/error",
-        "message": "分析说明",
-        "issues": "存在问题",
-        "suggestions": "改进建议"
+        "message": "分析说明（50-100字）",
+        "issues": "存在问题（50-100字）",
+        "suggestions": "改进建议（80-150字）"
     }},
     "skills_analysis": {{
         "status": "good/warning/error",
-        "message": "分析说明",
+        "message": "分析说明（50-100字）",
         "hard_skills": ["硬技能1", "硬技能2"],
         "soft_skills": ["软技能1", "软技能2"],
-        "suggestions": "改进建议"
+        "suggestions": "改进建议（80-150字）"
     }}
 }}
 
@@ -486,7 +486,8 @@ class ResumeOptimizationService:
         try:
             suggestions_response = await llm_service.generate_text(
                 suggestions_prompt,
-                temperature=0.5
+                temperature=0.5,
+                max_tokens=65535  # 使用最大 token 数以支持最详细的建议
             )
 
             # 去除可能存在的 markdown 代码块标记
@@ -588,19 +589,26 @@ class ResumeOptimizationService:
 [
     {{
         "priority": "high/medium/low",
-        "title": "建议标题",
-        "description": "详细描述这个建议",
-        "before": "优化前的内容示例（可选）",
-        "after": "优化后的内容示例（可选）",
-        "reason": "为什么需要这样优化"
+        "title": "建议标题（简明扼要，10-20字）",
+        "description": "详细描述这个建议（80-150字，说明具体的问题、影响和改进方向）",
+        "before": "优化前的内容示例（直接引用简历原文，50-100字）",
+        "after": "优化后的内容示例（具体改写后的内容，100-200字，展示如何改进）",
+        "reason": "为什么需要这样优化（80-150字，说明改进的理由和预期效果）"
     }}
 ]
 
 优化建议应该针对简历中存在的问题，提供具体可行的改进方案。
+**重要要求：**
+1. **description** 必须详细说明问题的具体表现、产生的影响以及改进方向，不少于 80 字
+2. **before** 必须直接引用简历中的原文，展示问题所在
+3. **after** 必须提供具体的改写示例，展示优化后的效果，不少于 100 字
+4. **reason** 必须详细说明为什么需要这样优化，以及优化后的预期效果，不少于 80 字
+5. 优先提供针对 JD 的建议（如果提供了 JD），其次提供通用优化建议
+
 优先级说明：
-- high: 重要的、必须改进的问题
-- medium: 建议改进的问题
-- low: 可以优化的细节
+- high: 重要的、必须改进的问题（如缺少关键技能、经验描述不清、缺少量化成果等）
+- medium: 建议改进的问题（如描述不够具体、缺少亮点等）
+- low: 可以优化的细节（如格式、措辞等）
 
 请确保返回的是合法的JSON数组格式，不要包含任何其他文字说明。
 """

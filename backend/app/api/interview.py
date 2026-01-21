@@ -1,8 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect
 from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Dict, Any
 import json
-from app.core.database import get_db
+from app.core.database import get_db, get_async_db
 from app.models.user import User
 from app.models.resume import Resume
 from app.models.interview import Interview, InterviewStatus
@@ -16,19 +17,24 @@ router = APIRouter()
 async def create_interview(
     interview_data: InterviewCreate,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ):
     """创建新的面试会话（异步生成问题）"""
     import asyncio
+    from sqlalchemy import select
     from app.schemas.common import ApiResponse
+    from app.core.database import AsyncSessionLocal
 
     print(f"[创建面试] 开始处理，用户ID: {current_user.id}, 简历ID: {interview_data.resume_id}")
 
     # 验证简历
-    resume = db.query(Resume).filter(
-        Resume.id == interview_data.resume_id,
-        Resume.user_id == current_user.id
-    ).first()
+    result = await db.execute(
+        select(Resume).where(
+            Resume.id == interview_data.resume_id,
+            Resume.user_id == current_user.id
+        )
+    )
+    resume = result.scalar_one_or_none()
     if not resume:
         print(f"[创建面试] 简历不存在，简历ID: {interview_data.resume_id}, 用户ID: {current_user.id}")
         raise HTTPException(
@@ -67,14 +73,14 @@ async def create_interview(
             conversation=json.dumps([])
         )
         db.add(db_interview)
-        db.commit()
-        db.refresh(db_interview)
+        await db.commit()
+        await db.refresh(db_interview)
         print(f"[创建面试] 数据库记录创建成功，面试ID: {db_interview.id}")
     except Exception as e:
         print(f"[创建面试] 数据库操作失败: {type(e).__name__}: {e}")
         import traceback
         traceback.print_exc()
-        db.rollback()
+        await db.rollback()
         raise HTTPException(
             status_code=500,
             detail=f"创建面试记录失败: {str(e)}"
@@ -87,12 +93,12 @@ async def create_interview(
     # 注册任务通知
     from app.models.task_notification import TaskType
     task_id = f"interview_{db_interview.id}"
-    task_notification_service.register_task(
+    await task_notification_service.register_task(
         task_id=task_id,
         user_id=current_user.id,
         task_type=TaskType.INTERVIEW_GENERATION,
         task_title=f"面试问题生成 - JD: {interview_data.job_description[:30]}...",
-        metadata={
+        extra_data={
             "interview_id": db_interview.id,
             "resume_id": interview_data.resume_id,
             "job_title": interview_data.job_description[:50] if len(interview_data.job_description) > 50 else interview_data.job_description
@@ -100,18 +106,21 @@ async def create_interview(
         db=db
     )
     
-    asyncio.create_task(
-        InterviewService.generate_interview_questions_async(
-            db=db,
-            interview_id=db_interview.id,
-            resume_data=resume_data,
-            job_description=interview_data.job_description,
-            num_questions=10,
-            user_id=current_user.id,
-            knowledge_doc_ids=interview_data.knowledge_doc_ids,
-            task_id=task_id
-        )
-    )
+    # 创建新的异步会话用于后台任务
+    async def background_task():
+        async with AsyncSessionLocal() as bg_db:
+            await InterviewService.generate_interview_questions_async(
+                db=bg_db,
+                interview_id=db_interview.id,
+                resume_data=resume_data,
+                job_description=interview_data.job_description,
+                num_questions=10,
+                user_id=current_user.id,
+                knowledge_doc_ids=interview_data.knowledge_doc_ids,
+                task_id=task_id
+            )
+    
+    asyncio.create_task(background_task())
     print(f"[创建面试] 已启动后台任务生成面试问题，任务ID: {task_id}")
 
     # 构建响应数据，将 JSON 字符串解析为 Python 对象
@@ -138,15 +147,19 @@ async def create_interview(
 async def get_interview(
     interview_id: int,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ):
     """获取面试详情"""
     from app.schemas.common import ApiResponse
+    from sqlalchemy import select
 
-    interview = db.query(Interview).filter(
-        Interview.id == interview_id,
-        Interview.user_id == current_user.id
-    ).first()
+    result = await db.execute(
+        select(Interview).where(
+            Interview.id == interview_id,
+            Interview.user_id == current_user.id
+        )
+    )
+    interview = result.scalar_one_or_none()
     if not interview:
         raise HTTPException(
             status_code=404,
@@ -177,15 +190,19 @@ async def get_interview(
 async def get_interview_status(
     interview_id: int,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ):
     """获取面试问题生成状态"""
     from app.schemas.common import ApiResponse
+    from sqlalchemy import select
 
-    interview = db.query(Interview).filter(
-        Interview.id == interview_id,
-        Interview.user_id == current_user.id
-    ).first()
+    result = await db.execute(
+        select(Interview).where(
+            Interview.id == interview_id,
+            Interview.user_id == current_user.id
+        )
+    )
+    interview = result.scalar_one_or_none()
     if not interview:
         raise HTTPException(
             status_code=404,
@@ -231,14 +248,18 @@ async def get_interview_status(
 @router.get("/")
 async def get_interviews(
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ):
     """获取用户的所有面试记录"""
     from app.schemas.common import ListResponse
+    from sqlalchemy import select, desc
 
-    interviews = db.query(Interview).filter(
-        Interview.user_id == current_user.id
-    ).order_by(Interview.created_at.desc()).all()
+    result = await db.execute(
+        select(Interview)
+        .where(Interview.user_id == current_user.id)
+        .order_by(desc(Interview.created_at))
+    )
+    interviews = result.scalars().all()
 
     # 构建响应数据列表，只返回列表页面需要的字段（精简版）
     interviews_data = []

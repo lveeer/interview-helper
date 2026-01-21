@@ -16,23 +16,23 @@ class iFlowLLMService:
         self._client = None
 
     def _get_client(self):
-        """获取 OpenAI 客户端实例"""
+        """获取 OpenAI 异步客户端实例"""
         if self._client is None:
             try:
-                from openai import OpenAI
+                from openai import AsyncOpenAI
                 # 提取 base_url（去掉 /chat/completions 后缀）
                 base_url = self.api_url.replace('/chat/completions', '')
-                self._client = OpenAI(
+                self._client = AsyncOpenAI(
                     base_url=base_url,
                     api_key=self.api_key,
                     timeout=180.0
                 )
-                logger.info(f"OpenAI 客户端初始化成功: {base_url}")
+                logger.info(f"OpenAI 异步客户端初始化成功: {base_url}")
             except ImportError:
                 raise Exception("openai 库未安装，请运行: pip install openai")
             except Exception as e:
-                logger.error(f"OpenAI 客户端初始化失败: {e}")
-                raise Exception(f"OpenAI 客户端初始化失败: {str(e)}")
+                logger.error(f"OpenAI 异步客户端初始化失败: {e}")
+                raise Exception(f"OpenAI 异步客户端初始化失败: {str(e)}")
         return self._client
 
     async def generate_text(
@@ -109,8 +109,8 @@ class iFlowLLMService:
             if "tools" in kwargs:
                 request_params["tools"] = kwargs["tools"]
 
-            # 调用 OpenAI API
-            response = client.chat.completions.create(**request_params)
+            # 调用 OpenAI API（异步）
+            response = await client.chat.completions.create(**request_params)
 
             # 提取生成的文本
             if response and response.choices:
@@ -157,11 +157,11 @@ class iFlowLLMService:
                 "stream": True
             }
 
-            # 调用 OpenAI 流式 API
-            stream = client.chat.completions.create(**request_params)
+            # 调用 OpenAI 流式 API（异步）
+            stream = await client.chat.completions.create(**request_params)
 
             # 逐块返回内容
-            for chunk in stream:
+            async for chunk in stream:
                 if chunk.choices and chunk.choices[0].delta.content:
                     yield chunk.choices[0].delta.content
 
@@ -223,8 +223,8 @@ class iFlowLLMService:
                 "response_format": {"type": "json_object"}
             }
 
-            # 调用 OpenAI API
-            response = client.chat.completions.create(**request_params)
+            # 调用 OpenAI API（异步）
+            response = await client.chat.completions.create(**request_params)
 
             # 提取解析结果
             if response and response.choices:

@@ -187,66 +187,6 @@ async def query_knowledge(
     )
 
 
-@router.get("/{doc_id}/preview")
-async def get_document_preview(
-    doc_id: int,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """获取文档预览内容"""
-    from app.schemas.common import ApiResponse
-
-    doc = db.query(KnowledgeDocument).filter(
-        KnowledgeDocument.id == doc_id,
-        KnowledgeDocument.user_id == current_user.id
-    ).first()
-
-    if not doc:
-        raise HTTPException(
-            status_code=404,
-            detail="文档不存在"
-        )
-
-    # 获取文档内容，如果内容过长则截断
-    content = doc.content or ""
-    max_length = 5000
-    if len(content) > max_length:
-        content = content[:max_length] + "\n\n... (内容过长，已截断)"
-
-    return ApiResponse(
-        code=200,
-        message="success",
-        data=DocumentPreviewResponse(content=content)
-    )
-
-
-@router.put("/{doc_id}/category")
-async def update_document_category(
-    doc_id: int,
-    category_update: CategoryUpdateRequest,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """更新文档分类"""
-    from app.schemas.common import SuccessResponse
-
-    doc = db.query(KnowledgeDocument).filter(
-        KnowledgeDocument.id == doc_id,
-        KnowledgeDocument.user_id == current_user.id
-    ).first()
-
-    if not doc:
-        raise HTTPException(
-            status_code=404,
-            detail="文档不存在"
-        )
-
-    doc.category = category_update.category
-    db.commit()
-
-    return SuccessResponse(message="分类更新成功")
-
-
 @router.get("/query/history")
 async def get_query_history(
     current_user: User = Depends(get_current_user),
@@ -331,3 +271,63 @@ async def save_query_history(
                 db.commit()
 
     return SuccessResponse(message="查询记录已保存")
+
+
+@router.get("/{doc_id}/preview")
+async def get_document_preview(
+    doc_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """获取文档预览内容"""
+    from app.schemas.common import ApiResponse
+
+    doc = db.query(KnowledgeDocument).filter(
+        KnowledgeDocument.id == doc_id,
+        KnowledgeDocument.user_id == current_user.id
+    ).first()
+
+    if not doc:
+        raise HTTPException(
+            status_code=404,
+            detail="文档不存在"
+        )
+
+    # 获取文档内容，如果内容过长则截断
+    content = doc.content or ""
+    max_length = 5000
+    if len(content) > max_length:
+        content = content[:max_length] + "\n\n... (内容过长，已截断)"
+
+    return ApiResponse(
+        code=200,
+        message="success",
+        data=DocumentPreviewResponse(content=content)
+    )
+
+
+@router.put("/{doc_id}/category")
+async def update_document_category(
+    doc_id: int,
+    category_update: CategoryUpdateRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """更新文档分类"""
+    from app.schemas.common import SuccessResponse
+
+    doc = db.query(KnowledgeDocument).filter(
+        KnowledgeDocument.id == doc_id,
+        KnowledgeDocument.user_id == current_user.id
+    ).first()
+
+    if not doc:
+        raise HTTPException(
+            status_code=404,
+            detail="文档不存在"
+        )
+
+    doc.category = category_update.category
+    db.commit()
+
+    return SuccessResponse(message="分类更新成功")

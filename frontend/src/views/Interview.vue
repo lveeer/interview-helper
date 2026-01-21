@@ -121,7 +121,7 @@
               :value="doc.id"
             />
           </el-select>
-          <div style="margin-top: 4px; font-size: 12px; color: #909399;">
+          <div class="form-tip">
             可选：选择知识库文档，AI 将基于这些文档进行面试提问
           </div>
         </el-form-item>
@@ -287,5 +287,11 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.form-tip {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--text-secondary);
 }
 </style>

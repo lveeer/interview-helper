@@ -98,6 +98,22 @@
           </div>
 
           <div class="header-right">
+            <!-- 黑暗模式切换 -->
+            <div class="theme-toggle">
+              <el-tooltip :content="themeStore.isDark ? '切换到亮色模式' : '切换到黑暗模式'" placement="bottom">
+                <el-button
+                  type="text"
+                  @click="themeStore.toggleTheme"
+                  class="theme-btn"
+                >
+                  <el-icon>
+                    <Sunny v-if="themeStore.isDark" />
+                    <Moon v-else />
+                  </el-icon>
+                </el-button>
+              </el-tooltip>
+            </div>
+
             <!-- 通知铃铛 -->
             <div class="notification-wrapper">
               <el-badge :value="unreadCount" :hidden="unreadCount === 0" :max="99">
@@ -211,6 +227,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
+import { useThemeStore } from '@/stores/theme'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   HomeFilled,
@@ -222,13 +239,16 @@ import {
   Menu,
   User,
   ArrowDown,
-  Bell
+  Bell,
+  Sunny,
+  Moon
 } from '@element-plus/icons-vue'
 import notificationManager from '@/utils/notification'
 
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
+const themeStore = useThemeStore()
 
 // 移动端菜单状态
 const isMobileMenuOpen = ref(false)
@@ -420,7 +440,7 @@ onUnmounted(() => {
 
 /* 侧边栏样式 */
 .el-aside {
-  background: #ffffff;
+  background: var(--bg-color-white);
   overflow-x: hidden;
   transition: all var(--transition-base);
   box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
@@ -502,9 +522,9 @@ onUnmounted(() => {
 .logo-title {
   font-size: 16px;
   font-weight: 700;
-  color: #303133;
+  color: var(--text-primary);
   letter-spacing: 1px;
-  background: linear-gradient(135deg, #303133 0%, #409EFF 100%);
+  background: linear-gradient(135deg, var(--text-primary) 0%, var(--primary-color) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -514,7 +534,7 @@ onUnmounted(() => {
 .logo-subtitle {
   font-size: 14px;
   font-weight: 700;
-  color: #409EFF;
+  color: var(--primary-color);
   letter-spacing: 4px;
   margin-top: 4px;
 }
@@ -529,7 +549,7 @@ onUnmounted(() => {
   margin: 0;
   border-radius: var(--radius-md);
   transition: all var(--transition-base);
-  color: #303133;
+  color: var(--text-primary);
   position: relative;
   overflow: hidden;
 }
@@ -549,13 +569,13 @@ onUnmounted(() => {
 
 :deep(.el-menu-item:hover) {
   background: rgba(64, 158, 255, 0.1);
-  color: #409EFF;
+  color: var(--primary-color);
   transform: translateX(4px);
 }
 
 :deep(.el-menu-item.is-active) {
   background: linear-gradient(90deg, rgba(64, 158, 255, 0.15) 0%, transparent 100%);
-  color: #409EFF;
+  color: var(--primary-color);
   font-weight: var(--font-weight-medium);
 }
 
@@ -564,12 +584,12 @@ onUnmounted(() => {
 }
 
 :deep(.el-menu-item.is-active .el-icon) {
-  color: #409EFF;
+  color: var(--primary-color);
 }
 
 :deep(.el-menu-item:hover .el-icon) {
   transform: scale(1.1);
-  color: #409EFF;
+  color: var(--primary-color);
 }
 
 :deep(.el-menu-item span) {
@@ -835,6 +855,34 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 25px;
+}
+
+/* 黑暗模式切换按钮 */
+.theme-toggle {
+  display: flex;
+  align-items: center;
+}
+
+.theme-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  transition: all var(--transition-fast);
+}
+
+.theme-btn:hover {
+  background: var(--bg-color);
+  color: var(--primary-color);
+  transform: rotate(15deg);
+}
+
+.theme-btn .el-icon {
+  font-size: 20px;
+  transition: transform var(--transition-base);
 }
 
 .notification-wrapper {

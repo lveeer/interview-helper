@@ -386,7 +386,7 @@ class RAGService:
             use_query_expansion: 是否使用查询扩展
             use_hybrid_search: 是否使用混合检索
             use_reranking: 是否使用重排序
-            db: 数据库会话
+            db: 数据库会话（AsyncSession）
 
         Returns:
             搜索结果列表
@@ -482,7 +482,7 @@ class RAGService:
             queries: 查询列表
             user_id: 用户 ID
             top_k: 返回结果数量
-            db: 数据库会话
+            db: 数据库会话（AsyncSession）
 
         Returns:
             搜索结果列表
@@ -521,7 +521,7 @@ class RAGService:
             query: 查询文本
             user_id: 用户 ID
             top_k: 返回结果数量
-            db: 数据库会话
+            db: 数据库会话（AsyncSession）
 
         Returns:
             搜索结果列表
@@ -555,7 +555,8 @@ class RAGService:
                 LIMIT {top_k}
             """
 
-            result = db.execute(text(sql)).fetchall()
+            result = await db.execute(text(sql))
+            result = result.fetchall()
 
             # 计算关键词匹配分数
             results = []
@@ -716,7 +717,7 @@ class RAGService:
             query_embedding: 查询向量
             user_id: 用户 ID
             top_k: 返回结果数量
-            db: 数据库会话
+            db: 数据库会话（AsyncSession）
 
         Returns:
             搜索结果列表
@@ -746,7 +747,8 @@ class RAGService:
                 LIMIT {top_k}
             """
 
-            result = db.execute(text(sql)).fetchall()
+            result = await db.execute(text(sql))
+            result = result.fetchall()
 
             return [
                 {

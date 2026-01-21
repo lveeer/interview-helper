@@ -37,7 +37,7 @@
         <el-input
           v-model="jobDescription"
           type="textarea"
-          :rows="6"
+          :rows="16"
           placeholder="请输入职位描述（JD），系统将根据 JD 提供针对性的简历分析和优化建议...&#10;&#10;例如：&#10;职位：前端开发工程师&#10;要求：&#10;- 3年以上 Vue.js 开发经验&#10;- 熟悉 TypeScript、ES6&#10;- 有大型项目经验优先&#10;- 良好的团队协作能力"
           class="jd-input"
         />
@@ -846,7 +846,7 @@ onMounted(() => {
 .jd-label {
   font-size: 14px;
   font-weight: bold;
-  color: #303133;
+  color: var(--text-primary);
 }
 
 .jd-input {
@@ -857,8 +857,8 @@ onMounted(() => {
   display: flex;
   align-items: center;
   font-size: 12px;
-  color: #909399;
-  background-color: #f5f7fa;
+  color: var(--text-secondary);
+  background-color: var(--bg-color-light);
   padding: 8px 12px;
   border-radius: 4px;
 }
@@ -1331,7 +1331,7 @@ onMounted(() => {
 }
 
 .step-item.active .step-dot {
-  background: #00c6fb !important;
+  background: var(--primary-light) !important;
   box-shadow: 0 0 15px rgba(0, 198, 251, 1) !important;
 }
 

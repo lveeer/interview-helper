@@ -37,13 +37,20 @@ class InterviewService:
             # 提取简历中的技术栈和关键词
             tech_stack = []
             if resume_data.get('skills'):
-                skills_text = json.dumps(resume_data['skills'], ensure_ascii=False)
-                tech_stack.extend([skill.get('name', '') for skill in resume_data['skills'] if skill.get('name')])
+                skills = resume_data['skills']
+                skills_text = json.dumps(skills, ensure_ascii=False)
+                # 兼容字符串和字典两种格式
+                for skill in skills:
+                    if isinstance(skill, dict):
+                        tech_stack.append(skill.get('name', ''))
+                    elif isinstance(skill, str):
+                        tech_stack.append(skill)
 
             if resume_data.get('experience'):
                 for exp in resume_data['experience']:
-                    tech_stack.append(exp.get('title', ''))
-                    tech_stack.append(exp.get('company', ''))
+                    if isinstance(exp, dict):
+                        tech_stack.append(exp.get('title', ''))
+                        tech_stack.append(exp.get('company', ''))
 
             # 构建查询，结合JD和技术栈
             tech_keywords = ', '.join([kw for kw in tech_stack if kw][:5])  # 最多取5个关键词
@@ -362,7 +369,7 @@ class InterviewService:
         异步生成面试问题并在完成后更新数据库
 
         Args:
-            db: 数据库会话
+            db: 数据库会话（AsyncSession）
             interview_id: 面试ID
             resume_data: 简历数据
             job_description: 岗位描述
@@ -372,6 +379,7 @@ class InterviewService:
             task_id: 任务ID（用于状态推送）
         """
         from app.services.task_notification_service import task_notification_service
+        from sqlalchemy import select
         
         try:
             # 通知任务开始
@@ -422,13 +430,16 @@ class InterviewService:
                 knowledge_context=knowledge_context
             )
 
-            # 更新数据库
-            interview = db.query(Interview).filter(Interview.id == interview_id).first()
+            # 更新数据库（异步操作）
+            result = await db.execute(
+                select(Interview).where(Interview.id == interview_id)
+            )
+            interview = result.scalar_one_or_none()
             if interview:
                 interview.questions = json.dumps(questions)
                 interview.status = InterviewStatus.pending
                 interview.generation_error = None
-                db.commit()
+                await db.commit()
                 print(f"[异步生成] 面试 {interview_id} 问题生成成功，共 {len(questions)} 个问题")
                 
                 # 通知任务完成
@@ -455,14 +466,17 @@ class InterviewService:
 
         except Exception as e:
             # 生成失败，记录错误信息
-            interview = db.query(Interview).filter(Interview.id == interview_id).first()
+            result = await db.execute(
+                select(Interview).where(Interview.id == interview_id)
+            )
+            interview = result.scalar_one_or_none()
             if interview:
                 interview.status = InterviewStatus.pending
                 interview.generation_error = json.dumps({
                     "error": str(e),
                     "type": type(e).__name__
                 }, ensure_ascii=False)
-                db.commit()
+                await db.commit()
                 print(f"[异步生成] 面试 {interview_id} 问题生成失败: {e}")
             else:
                 print(f"[异步生成] 面试 {interview_id} 不存在")
