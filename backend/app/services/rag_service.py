@@ -555,7 +555,7 @@ class RAGService:
                 LIMIT {top_k}
             """
 
-            result = await db.execute(text(sql))
+            result = db.execute(text(sql))
             result = result.fetchall()
 
             # 计算关键词匹配分数
@@ -747,7 +747,7 @@ class RAGService:
                 LIMIT {top_k}
             """
 
-            result = await db.execute(text(sql))
+            result = db.execute(text(sql))
             result = result.fetchall()
 
             return [

@@ -986,7 +986,242 @@ Authorization: Bearer <access_token>
 
 ---
 
-## 6. 评估反馈模块 (`/api/evaluation`)
+## 6. LLM 配置管理模块 (`/api/llm-config`)
+
+### 6.1 获取当前用户 LLM 配置
+
+**接口:** `GET /api/llm-config/`
+
+**认证:** 需要登录
+
+**响应示例:**
+```json
+{
+  "code": 200,
+  "message": "获取成功",
+  "data": {
+    "id": 1,
+    "user_id": 2,
+    "provider": "dashscope",
+    "model_name": "qwen-plus",
+    "api_key": "sk-xxxxx",
+    "api_base": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    "is_active": true,
+    "created_at": "2026-01-21T10:00:00Z",
+    "updated_at": "2026-01-21T10:00:00Z"
+  }
+}
+```
+
+**无配置时响应:**
+```json
+{
+  "code": 200,
+  "message": "获取成功",
+  "data": {
+    "id": 0,
+    "user_id": 2,
+    "provider": "",
+    "model_name": "",
+    "api_key": null,
+    "api_base": null,
+    "is_active": false,
+    "created_at": null,
+    "updated_at": null
+  }
+}
+```
+
+---
+
+### 6.2 创建 LLM 配置
+
+**接口:** `POST /api/llm-config/`
+
+**认证:** 需要登录
+
+**请求体:**
+```json
+{
+  "provider": "dashscope",
+  "model_name": "qwen-plus",
+  "api_key": "sk-xxxxx",
+  "api_base": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+  "is_active": true
+}
+```
+
+**响应示例:**
+```json
+{
+  "code": 201,
+  "message": "创建成功",
+  "data": {
+    "id": 1,
+    "user_id": 2,
+    "provider": "dashscope",
+    "model_name": "qwen-plus",
+    "api_key": "sk-xxxxx",
+    "api_base": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    "is_active": true,
+    "created_at": "2026-01-21T10:00:00Z",
+    "updated_at": "2026-01-21T10:00:00Z"
+  }
+}
+```
+
+---
+
+### 6.3 更新 LLM 配置
+
+**接口:** `PUT /api/llm-config/`
+
+**认证:** 需要登录
+
+**请求体:**
+```json
+{
+  "provider": "dashscope",
+  "model_name": "qwen-max",
+  "api_key": "sk-new-key",
+  "api_base": null,
+  "is_active": true
+}
+```
+
+**响应示例:**
+```json
+{
+  "code": 200,
+  "message": "更新成功",
+  "data": {
+    "id": 1,
+    "user_id": 2,
+    "provider": "dashscope",
+    "model_name": "qwen-max",
+    "api_key": "sk-new-key",
+    "api_base": null,
+    "is_active": true,
+    "created_at": "2026-01-21T10:00:00Z",
+    "updated_at": "2026-01-21T11:00:00Z"
+  }
+}
+```
+
+---
+
+### 6.4 删除 LLM 配置
+
+**接口:** `DELETE /api/llm-config/`
+
+**认证:** 需要登录
+
+**响应示例:**
+```json
+{
+  "code": 200,
+  "message": "删除成功",
+  "data": null
+}
+```
+
+---
+
+### 6.5 测试 LLM 连接
+
+**接口:** `POST /api/llm-config/test-connection`
+
+**认证:** 需要登录
+
+**请求体:**
+```json
+{
+  "provider": "dashscope",
+  "model_name": "qwen-plus",
+  "api_key": "sk-xxxxx",
+  "api_base": "https://dashscope.aliyuncs.com/compatible-mode/v1"
+}
+```
+
+**响应示例:**
+```json
+{
+  "code": 200,
+  "message": "测试完成",
+  "data": {
+    "success": true,
+    "message": "连接成功",
+    "latency_ms": 234.5,
+    "error": null
+  }
+}
+```
+
+**失败示例:**
+```json
+{
+  "code": 200,
+  "message": "测试完成",
+  "data": {
+    "success": false,
+    "message": "连接失败",
+    "latency_ms": null,
+    "error": "Invalid API key"
+  }
+}
+```
+
+---
+
+### 6.6 获取支持的 LLM 提供商
+
+**接口:** `GET /api/llm-config/providers`
+
+**认证:** 需要登录
+
+**响应示例:**
+```json
+{
+  "code": 200,
+  "message": "获取成功",
+  "data": [
+    {
+      "provider": "dashscope",
+      "name": "通义千问",
+      "models": ["qwen-turbo", "qwen-plus", "qwen-max", "qwen-long"],
+      "description": "阿里云通义千问大模型"
+    },
+    {
+      "provider": "ernie",
+      "name": "文心一言",
+      "models": ["ernie-bot", "ernie-bot-turbo", "ernie-bot-4"],
+      "description": "百度文心一言大模型"
+    },
+    {
+      "provider": "openai",
+      "name": "OpenAI",
+      "models": ["gpt-4", "gpt-4-turbo", "gpt-3.5-turbo"],
+      "description": "OpenAI GPT 系列"
+    },
+    {
+      "provider": "anthropic",
+      "name": "Anthropic",
+      "models": ["claude-3-opus", "claude-3-sonnet", "claude-3-haiku"],
+      "description": "Anthropic Claude 系列"
+    },
+    {
+      "provider": "ollama",
+      "name": "Ollama",
+      "models": ["qwen2.5", "llama3", "mistral"],
+      "description": "本地部署的开源模型"
+    }
+  ]
+}
+```
+
+---
+
+## 7. 评估反馈模块 (`/api/evaluation`)
 
 ### 6.1 获取面试评估报告
 

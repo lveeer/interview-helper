@@ -433,6 +433,255 @@ class OllamaEmbeddingService:
         return embeddings
 
 
+class LiteLLMService:
+    """基于 LiteLLM 的 LLM 服务（支持 100+ LLM 提供商）"""
+
+    def __init__(self, model: str = None, api_key: str = None, api_base: str = None):
+        self.model = model or settings.LITELLM_MODEL
+        self.api_key = api_key or settings.LITELLM_API_KEY
+        self.api_base = api_base or settings.LITELLM_API_BASE
+
+    async def generate_text(
+        self,
+        prompt: str,
+        temperature: float = 0.7,
+        max_tokens: int = 65535,
+        **kwargs
+    ) -> str:
+        """
+        生成文本（兼容接口）
+
+        Args:
+            prompt: 提示词
+            temperature: 温度参数（0-1）
+            max_tokens: 最大生成 token 数
+            **kwargs: 其他参数
+
+        Returns:
+            生成的文本
+        """
+        messages = [{"role": "user", "content": prompt}]
+
+        response = await self.generate_chat(
+            messages=messages,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            **kwargs
+        )
+
+        return response
+
+    async def generate_chat(
+        self,
+        messages: List[Dict[str, str]],
+        temperature: float = 0.7,
+        max_tokens: int = 65535,
+        stream: bool = False,
+        **kwargs
+    ) -> str:
+        """
+        生成对话
+
+        Args:
+            messages: 消息列表
+            temperature: 温度参数（0-1）
+            max_tokens: 最大生成 token 数
+            stream: 是否流式输出
+            **kwargs: 其他参数
+
+        Returns:
+            生成的文本
+        """
+        import litellm
+
+        try:
+            # 构建请求参数
+            request_params = {
+                "model": self.model,
+                "messages": messages,
+                "temperature": temperature,
+                "max_tokens": max_tokens,
+            }
+
+            # 添加 top_p 参数
+            if "top_p" in kwargs:
+                request_params["top_p"] = kwargs["top_p"]
+
+            # 添加 response_format 参数（如果指定）
+            if "response_format" in kwargs:
+                request_params["response_format"] = kwargs["response_format"]
+
+            # 添加 tools 参数（如果指定）
+            if "tools" in kwargs:
+                request_params["tools"] = kwargs["tools"]
+
+            # 如果配置了自定义 API Base，添加到请求参数
+            if self.api_base:
+                request_params["api_base"] = self.api_base
+
+            # 如果配置了 API Key，添加到请求参数
+            if self.api_key:
+                request_params["api_key"] = self.api_key
+
+            # 调用 LiteLLM API（异步）
+            response = await litellm.acompletion(**request_params)
+
+            # 提取生成的文本
+            if response and response.choices:
+                return response.choices[0].message.content
+            else:
+                raise Exception("LiteLLM API 返回空响应")
+
+        except Exception as e:
+            logger.error(f"LiteLLM 调用失败: {e}", exc_info=True)
+            raise Exception(f"LiteLLM 调用失败: {str(e)}")
+
+    async def stream_chat(
+        self,
+        messages: List[Dict[str, str]],
+        temperature: float = 0.7,
+        max_tokens: int = 65535,
+        **kwargs
+    ):
+        """
+        流式生成对话
+
+        Args:
+            messages: 消息列表
+            temperature: 温度参数（0-1）
+            max_tokens: 最大生成 token 数
+            **kwargs: 其他参数
+
+        Yields:
+            生成的文本块
+        """
+        import litellm
+
+        try:
+            # 构建请求参数
+            request_params = {
+                "model": self.model,
+                "messages": messages,
+                "temperature": temperature,
+                "max_tokens": max_tokens,
+                "stream": True
+            }
+
+            # 添加 top_p 参数
+            if "top_p" in kwargs:
+                request_params["top_p"] = kwargs["top_p"]
+
+            # 如果配置了自定义 API Base，添加到请求参数
+            if self.api_base:
+                request_params["api_base"] = self.api_base
+
+            # 如果配置了 API Key，添加到请求参数
+            if self.api_key:
+                request_params["api_key"] = self.api_key
+
+            # 调用 LiteLLM 流式 API（异步）
+            stream = await litellm.acompletion(**request_params)
+
+            # 逐块返回内容
+            async for chunk in stream:
+                if chunk.choices and chunk.choices[0].delta.content:
+                    yield chunk.choices[0].delta.content
+
+        except Exception as e:
+            logger.error(f"LiteLLM 流式调用失败: {e}", exc_info=True)
+            raise Exception(f"LiteLLM 流式调用失败: {str(e)}")
+
+    async def generate_embedding(
+        self,
+        text: str,
+        **kwargs
+    ) -> List[float]:
+        """
+        生成文本嵌入
+
+        Args:
+            text: 输入文本
+            **kwargs: 其他参数
+
+        Returns:
+            向量嵌入
+        """
+        import litellm
+
+        try:
+            # 构建请求参数
+            request_params = {
+                "model": self.model,
+                "input": text
+            }
+
+            # 如果配置了自定义 API Base，添加到请求参数
+            if self.api_base:
+                request_params["api_base"] = self.api_base
+
+            # 如果配置了 API Key，添加到请求参数
+            if self.api_key:
+                request_params["api_key"] = self.api_key
+
+            # 调用 LiteLLM Embedding API
+            response = await litellm.aembedding(**request_params)
+
+            # 提取向量
+            if response and response.data:
+                return response.data[0].embedding
+            else:
+                raise Exception("LiteLLM Embedding API 返回空响应")
+
+        except Exception as e:
+            logger.error(f"LiteLLM Embedding 调用失败: {e}", exc_info=True)
+            raise Exception(f"LiteLLM Embedding 调用失败: {str(e)}")
+
+    async def generate_embeddings_batch(
+        self,
+        texts: List[str],
+        **kwargs
+    ) -> List[List[float]]:
+        """
+        批量生成文本嵌入
+
+        Args:
+            texts: 输入文本列表
+            **kwargs: 其他参数
+
+        Returns:
+            向量嵌入列表
+        """
+        import litellm
+
+        try:
+            # 构建请求参数
+            request_params = {
+                "model": self.model,
+                "input": texts
+            }
+
+            # 如果配置了自定义 API Base，添加到请求参数
+            if self.api_base:
+                request_params["api_base"] = self.api_base
+
+            # 如果配置了 API Key，添加到请求参数
+            if self.api_key:
+                request_params["api_key"] = self.api_key
+
+            # 调用 LiteLLM Embedding API（批量）
+            response = await litellm.aembedding(**request_params)
+
+            # 提取向量列表
+            if response and response.data:
+                return [item.embedding for item in response.data]
+            else:
+                raise Exception("LiteLLM Embedding API 返回空响应")
+
+        except Exception as e:
+            logger.error(f"LiteLLM Embedding 批量调用失败: {e}", exc_info=True)
+            raise Exception(f"LiteLLM Embedding 批量调用失败: {str(e)}")
+
+
 # 全局 Ollama Embedding 服务实例
 _ollama_embedding_instance: Optional[OllamaEmbeddingService] = None
 
@@ -471,8 +720,8 @@ async def get_embedding_service():
         llm = await get_llm()
         return llm
     elif provider == "litellm":
-        llm = await get_llm()
-        return llm
+        litellm_service = await get_litellm()
+        return litellm_service
     else:
         raise Exception(f"不支持的 Embedding 提供商: {provider}")
 
@@ -489,3 +738,144 @@ async def create_embedding(text: str) -> List[float]:
     """
     service = await get_embedding_service()
     return await service.generate_embedding(text)
+
+
+# 全局 LiteLLM 服务实例
+_litellm_service_instance: Optional[LiteLLMService] = None
+
+
+async def get_litellm() -> LiteLLMService:
+    """
+    获取全局 LiteLLM 服务实例（单例模式）
+
+    Returns:
+        LiteLLMService 实例
+    """
+    global _litellm_service_instance
+    if _litellm_service_instance is None:
+        _litellm_service_instance = LiteLLMService()
+    return _litellm_service_instance
+
+
+def reset_litellm_service():
+    """重置 LiteLLM 服务实例（用于测试或切换配置）"""
+    global _litellm_service_instance
+    _litellm_service_instance = None
+
+
+# API Key 加密工具
+from cryptography.fernet import Fernet
+import os
+
+_ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY", Fernet.generate_key().decode())
+_cipher_suite = Fernet(_ENCRYPTION_KEY.encode())
+
+
+def encrypt_api_key(api_key: str) -> str:
+    """加密 API Key"""
+    if not api_key:
+        return ""
+    return _cipher_suite.encrypt(api_key.encode()).decode()
+
+
+def decrypt_api_key(encrypted_key: str) -> str:
+    """解密 API Key"""
+    if not encrypted_key:
+        return ""
+    return _cipher_suite.decrypt(encrypted_key.encode()).decode()
+
+
+async def get_user_llm_service(user_id: int, db) -> LiteLLMService:
+    """
+    获取用户的 LLM 服务（优先使用用户配置，无则使用全局配置）
+
+    Args:
+        user_id: 用户 ID
+        db: 数据库会话
+
+    Returns:
+        LiteLLMService 实例
+    """
+    from app.models.llm_config import UserLLMConfig
+    from sqlalchemy import select
+
+    # 查询用户的 LLM 配置
+    result = await db.execute(
+        select(UserLLMConfig).where(
+            UserLLMConfig.user_id == user_id,
+            UserLLMConfig.is_active == True
+        ).order_by(UserLLMConfig.created_at.desc())
+    )
+    user_config = result.scalar_one_or_none()
+
+    if user_config:
+        # 使用用户私有配置
+        api_key = decrypt_api_key(user_config.api_key) if user_config.api_key else None
+        return LiteLLMService(
+            model=user_config.provider,
+            api_key=api_key,
+            api_base=user_config.api_base
+        )
+    else:
+        # 降级使用全局配置
+        return await get_litellm()
+
+
+async def test_llm_connection(
+    provider: str,
+    model_name: str,
+    api_key: str = None,
+    api_base: str = None
+) -> dict:
+    """
+    测试 LLM 连接
+
+    Args:
+        provider: LLM 提供商
+        model_name: 模型名称
+        api_key: API Key（可选）
+        api_base: API 端点（可选）
+
+    Returns:
+        测试结果字典
+    """
+    import time
+    import litellm
+
+    try:
+        start_time = time.time()
+
+        # 构建请求参数
+        request_params = {
+            "model": f"{provider}/{model_name}",
+            "messages": [{"role": "user", "content": "Hello"}],
+            "max_tokens": 10,
+        }
+
+        # 添加 API Key
+        if api_key:
+            request_params["api_key"] = api_key
+
+        # 添加 API Base
+        if api_base:
+            request_params["api_base"] = api_base
+
+        # 调用 API
+        response = await litellm.acompletion(**request_params)
+
+        latency_ms = (time.time() - start_time) * 1000
+
+        return {
+            "success": True,
+            "message": "连接成功",
+            "latency_ms": round(latency_ms, 2),
+            "error": None
+        }
+
+    except Exception as e:
+        return {
+            "success": False,
+            "message": "连接失败",
+            "latency_ms": None,
+            "error": str(e)
+        }

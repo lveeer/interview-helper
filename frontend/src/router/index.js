@@ -74,6 +74,12 @@ const routes = [
         name: 'InterviewRecord',
         component: () => import('@/views/InterviewRecord.vue'),
         meta: { title: '面试对话记录' }
+      },
+      {
+        path: '/llm-config',
+        name: 'LLMConfig',
+        component: () => import('@/views/LLMConfig.vue'),
+        meta: { title: 'LLM 配置' }
       }
     ]
   }

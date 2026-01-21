@@ -8,9 +8,9 @@ echo "========================================"
 echo ""
 echo "[1/5] 设置环境变量..."
 export OLLAMA_BASE_URL=http://localhost:11434
-export OLLAMA_EMBEDDING_MODEL=qwen3-embedding:4b
+export OLLAMA_EMBEDDING_MODEL=mxbai-embed-large
 export OLLAMA_LLM_MODEL=qwen2.5
-export VECTOR_DIMENSION=2560
+export VECTOR_DIMENSION=1024
 export EMBEDDING_PROVIDER=ollama
 
 echo "环境变量已设置:"

@@ -71,6 +71,10 @@
               <el-icon><Upload /></el-icon>
               上传简历
             </el-button>
+            <el-button type="success" @click="goToResumeOptimize">
+              <el-icon><MagicStick /></el-icon>
+              简历优化
+            </el-button>
             <el-button type="success" @click="goToInterview">
               <el-icon><ChatDotRound /></el-icon>
               开始面试
@@ -82,6 +86,10 @@
             <el-button type="info" @click="goToKnowledge">
               <el-icon><Reading /></el-icon>
               知识库
+            </el-button>
+            <el-button type="primary" plain @click="goToLLMConfig">
+              <el-icon><Setting /></el-icon>
+              LLM 配置
             </el-button>
           </div>
         </el-card>
@@ -155,9 +163,11 @@ const loadData = async () => {
 }
 
 const goToResume = () => router.push('/resume')
+const goToResumeOptimize = () => router.push('/resume-optimize')
 const goToInterview = () => router.push('/interview')
 const goToJobMatch = () => router.push('/job-match')
 const goToKnowledge = () => router.push('/knowledge')
+const goToLLMConfig = () => router.push('/llm-config')
 
 const formatDate = (dateString) => {
   if (!dateString) return ''
@@ -360,16 +370,16 @@ onMounted(() => {
 /* 快速操作区域 */
 .quick-actions {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 16px;
-  gap: var(--spacing-md, 16px);
-  padding: 8px 0;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  gap: var(--spacing-lg, 20px);
+  padding: 16px 0;
 }
 
 .quick-actions .el-button {
-  height: auto;
-  padding: 16px;
-  padding: var(--spacing-md, 16px);
+  height: 100px;
+  padding: 20px;
+  padding: var(--spacing-lg, 20px);
   border-radius: 8px;
   border-radius: var(--radius-md, 8px);
   font-size: 14px;

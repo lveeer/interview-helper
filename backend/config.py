@@ -49,11 +49,11 @@ class Settings(BaseSettings):
 
     # Ollama 配置
     OLLAMA_BASE_URL: str = "http://localhost:11434"
-    OLLAMA_EMBEDDING_MODEL: str = "qwen3-embedding:4b"
+    OLLAMA_EMBEDDING_MODEL: str = "mxbai-embed-large"
     OLLAMA_LLM_MODEL: str = "qwen2.5"
 
     # 向量数据库配置
-    VECTOR_DIMENSION: int = 2560
+    VECTOR_DIMENSION: int = 1024
     EMBEDDING_MODEL: str = "ollama"
     EMBEDDING_PROVIDER: str = "ollama"  # 可选: ollama, openai, litellm
 

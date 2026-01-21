@@ -31,7 +31,7 @@ class VectorChunk(Base):
     id = Column(Integer, primary_key=True, index=True)
     document_id = Column(Integer, ForeignKey("knowledge_documents.id"), nullable=False)
     chunk_text = Column(Text, nullable=False)
-    embedding = Column(Vector(2560))  # pgvector 存储
+    embedding = Column(Vector(1024))  # pgvector 存储
     chunk_index = Column(Integer)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())

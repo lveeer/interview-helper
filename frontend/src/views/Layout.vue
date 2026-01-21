@@ -77,6 +77,10 @@
           <el-icon><Reading /></el-icon>
           <span>知识库</span>
         </el-menu-item>
+        <el-menu-item index="/llm-config">
+          <el-icon><Setting /></el-icon>
+          <span>LLM 配置</span>
+        </el-menu-item>
       </el-menu>
     </el-aside>
 
@@ -236,6 +240,7 @@ import {
   TrendCharts,
   ChatDotRound,
   Reading,
+  Setting,
   Menu,
   User,
   ArrowDown,
