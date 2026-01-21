@@ -15,7 +15,8 @@ class RAGService:
     async def process_document(
         document_id: int,
         file_path: str,
-        db: Session
+        db: Session,
+        chunk_strategy: str = "semantic"
     ):
         """
         处理知识库文档：切片、向量化、存储
@@ -24,12 +25,14 @@ class RAGService:
             document_id: 文档 ID
             file_path: 文件路径
             db: 数据库会话
+            chunk_strategy: 分段策略（semantic, parent_child, recursive）
         """
         import os
 
         try:
             # 1. 读取文档内容
             print(f"[RAG] 开始处理文档: {file_path}")
+            print(f"[RAG] 使用分段策略: {chunk_strategy}")
 
             # 根据文件类型选择不同的处理方法
             file_ext = os.path.splitext(file_path)[1].lower()
@@ -64,27 +67,52 @@ class RAGService:
             if doc:
                 doc.content = text_content
                 doc.status = "processing"
+                doc.chunk_strategy = chunk_strategy
                 db.commit()
 
             print(f"[RAG] 文档内容长度: {len(text_content)} 字符")
 
-            # 2. 文本切片
+            # 2. 根据策略选择分段方法
             from config import settings
-            chunks = RAGService.chunk_text(
-                text_content,
-                chunk_size=settings.CHUNK_SIZE,
-                overlap=settings.CHUNK_OVERLAP
-            )
 
-            print(f"[RAG] 切分为 {len(chunks)} 个文本块")
+            if chunk_strategy == "parent_child":
+                # 父子分段策略
+                chunks_info = RAGService.parent_child_chunk_text(
+                    text_content,
+                    parent_size=settings.CHUNK_SIZE * 2,  # 父块大小为子块的2倍
+                    child_size=settings.CHUNK_SIZE,
+                    overlap=settings.CHUNK_OVERLAP
+                )
+                print(f"[RAG] 父子分段: {len(chunks_info)} 个文本块（包含父块和子块）")
+                await RAGService.store_parent_child_chunks(document_id, chunks_info, db)
+                chunk_count = len(chunks_info)
 
-            # 3. 向量化并存储
-            await RAGService.store_chunks(document_id, chunks, db)
+            elif chunk_strategy == "recursive":
+                # 递归分段策略
+                chunks = RAGService.recursive_chunk_text(
+                    text_content,
+                    chunk_size=settings.CHUNK_SIZE,
+                    overlap=settings.CHUNK_OVERLAP
+                )
+                print(f"[RAG] 递归分段: {len(chunks)} 个文本块")
+                await RAGService.store_chunks(document_id, chunks, db)
+                chunk_count = len(chunks)
 
-            # 更新文档状态
+            else:
+                # 默认语义分段策略
+                chunks = RAGService.chunk_text(
+                    text_content,
+                    chunk_size=settings.CHUNK_SIZE,
+                    overlap=settings.CHUNK_OVERLAP
+                )
+                print(f"[RAG] 语义分段: {len(chunks)} 个文本块")
+                await RAGService.store_chunks(document_id, chunks, db)
+                chunk_count = len(chunks)
+
+            # 3. 更新文档状态
             if doc:
                 doc.status = "completed"
-                doc.chunk_count = len(chunks)
+                doc.chunk_count = chunk_count
                 db.commit()
 
             print(f"[RAG] 文档处理完成: {file_path}")
@@ -317,6 +345,222 @@ class RAGService:
         return chunks
 
     @staticmethod
+    def parent_child_chunk_text(
+        text: str,
+        parent_size: int = 1000,
+        child_size: int = 300,
+        overlap: int = 50
+    ) -> List[Dict[str, Any]]:
+        """
+        父子分段策略（P0）- 最适合面试场景，保证上下文完整性
+
+        策略说明：
+        1. 先将文本分割成较大的父块（parent_size），保证上下文完整性
+        2. 再将每个父块分割成较小的子块（child_size），用于精确检索
+        3. 检索时返回子块，但可以获取父块提供完整上下文
+
+        Args:
+            text: 原始文本
+            parent_size: 父块大小
+            child_size: 子块大小
+            overlap: 重叠大小
+
+        Returns:
+            包含父块和子块信息的字典列表
+            [
+                {
+                    "text": "子块文本",
+                    "parent_text": "父块文本",
+                    "is_parent": False,
+                    "parent_index": 0,
+                    "chunk_index": 0
+                },
+                ...
+            ]
+        """
+        chunks = []
+        paragraphs = text.split('\n\n')
+
+        # 1. 先生成父块（按段落优先）
+        parent_chunks = []
+        current_parent = ""
+        current_size = 0
+
+        for para in paragraphs:
+            para = para.strip()
+            if not para:
+                continue
+
+            para_size = len(para)
+
+            # 检测语义边界
+            is_new_topic = RAGService._detect_semantic_boundary(para, current_parent)
+
+            # 如果单个段落超过 parent_size，需要进一步分割
+            if para_size > parent_size:
+                # 先保存当前父块
+                if current_parent:
+                    parent_chunks.append(current_parent.strip())
+                    current_parent = ""
+                    current_size = 0
+
+                # 按句子分割大段落
+                sentences = re.split(r'([。！？!?；;])', para)
+                sentences = [''.join(pair) for pair in zip(sentences[::2], sentences[1::2])]
+
+                for sentence in sentences:
+                    sentence = sentence.strip()
+                    if not sentence:
+                        continue
+
+                    if current_size + len(sentence) > parent_size:
+                        if current_parent:
+                            parent_chunks.append(current_parent.strip())
+                        current_parent = sentence
+                        current_size = len(sentence)
+                    else:
+                        current_parent += sentence if not current_parent else " " + sentence
+                        current_size += len(sentence)
+
+            # 如果检测到新主题或当前父块加新段落超过大小
+            elif is_new_topic or current_size + para_size > parent_size:
+                if current_parent:
+                    parent_chunks.append(current_parent.strip())
+                current_parent = para
+                current_size = para_size
+            else:
+                current_parent += para if not current_parent else "\n\n" + para
+                current_size += para_size
+
+        # 添加最后一个父块
+        if current_parent:
+            parent_chunks.append(current_parent.strip())
+
+        # 如果没有切分出任何父块，使用简单切分
+        if not parent_chunks:
+            parent_chunks = RAGService.simple_chunk_text(text, parent_size, overlap)
+
+        # 2. 为每个父块生成子块
+        chunk_index = 0
+        for parent_idx, parent_text in enumerate(parent_chunks):
+            # 先添加父块本身（可选，用于直接检索）
+            chunks.append({
+                "text": parent_text,
+                "parent_text": parent_text,
+                "is_parent": True,
+                "parent_index": parent_idx,
+                "chunk_index": chunk_index
+            })
+            chunk_index += 1
+
+            # 将父块分割成子块
+            child_chunks = RAGService.simple_chunk_text(parent_text, child_size, overlap)
+
+            for child_text in child_chunks:
+                chunks.append({
+                    "text": child_text,
+                    "parent_text": parent_text,
+                    "is_parent": False,
+                    "parent_index": parent_idx,
+                    "chunk_index": chunk_index
+                })
+                chunk_index += 1
+
+        return chunks
+
+    @staticmethod
+    def recursive_chunk_text(
+        text: str,
+        chunk_size: int = 500,
+        overlap: int = 50,
+        separators: List[str] = None
+    ) -> List[str]:
+        """
+        递归分段策略（P1）- 更灵活的分隔符控制
+
+        策略说明：
+        1. 按分隔符优先级递归尝试分割文本
+        2. 优先使用高级分隔符（如段落、句子）
+        3. 如果高级分隔符无法满足大小要求，降级使用低级分隔符（如空格、字符）
+
+        Args:
+            text: 原始文本
+            chunk_size: 每块大小
+            overlap: 重叠大小
+            separators: 分隔符列表，按优先级从高到低排序
+
+        Returns:
+            文本块列表
+        """
+        if separators is None:
+            # 默认分隔符优先级：段落 > 句子 > 空格 > 字符
+            separators = ['\n\n', '\n', '。', '！', '？', '；', ';', ' ', '']
+
+        chunks = []
+
+        def _recursive_split(text_to_split, separators_list, depth=0):
+            """递归分割函数"""
+            if not text_to_split:
+                return []
+
+            # 如果文本长度小于等于 chunk_size，直接返回
+            if len(text_to_split) <= chunk_size:
+                return [text_to_split.strip()]
+
+            # 如果没有更多分隔符，使用字符分割
+            if not separators_list:
+                return RAGService.simple_chunk_text(text_to_split, chunk_size, overlap)
+
+            # 尝试使用当前分隔符分割
+            separator = separators_list[0]
+            parts = text_to_split.split(separator)
+
+            # 如果分割后只有一个部分，使用下一个分隔符
+            if len(parts) <= 1:
+                return _recursive_split(text_to_split, separators_list[1:], depth + 1)
+
+            # 构建文本块
+            current_chunk = ""
+            result = []
+
+            for part in parts:
+                part = part.strip()
+                if not part:
+                    continue
+
+                # 如果当前块加上新部分超过大小
+                if len(current_chunk) + len(part) + len(separator) > chunk_size:
+                    if current_chunk:
+                        result.append(current_chunk.strip())
+                    current_chunk = part
+                else:
+                    current_chunk += part if not current_chunk else separator + part
+
+            # 添加最后一个块
+            if current_chunk:
+                result.append(current_chunk.strip())
+
+            # 检查是否有块仍然过大，递归处理
+            final_result = []
+            for chunk in result:
+                if len(chunk) > chunk_size * 1.5:
+                    # 块太大，递归分割
+                    sub_chunks = _recursive_split(chunk, separators_list[1:], depth + 1)
+                    final_result.extend(sub_chunks)
+                else:
+                    final_result.append(chunk)
+
+            return final_result
+
+        chunks = _recursive_split(text, separators)
+
+        # 如果没有切分出任何 chunk，使用简单切分
+        if not chunks:
+            chunks = RAGService.simple_chunk_text(text, chunk_size, overlap)
+
+        return chunks
+
+    @staticmethod
     async def expand_query(
         query: str,
         num_expansions: int = 3
@@ -465,6 +709,56 @@ class RAGService:
                 chunk_index=idx
             )
             db.add(vector_chunk)
+
+        db.commit()
+
+    @staticmethod
+    async def store_parent_child_chunks(
+        document_id: int,
+        chunks_info: List[Dict[str, Any]],
+        db: Session
+    ):
+        """
+        存储父子分块到数据库
+
+        Args:
+            document_id: 文档 ID
+            chunks_info: 包含父块和子块信息的字典列表
+            db: 数据库会话
+        """
+        from app.services.llm_service import create_embedding
+
+        # 用于跟踪父块 ID
+        parent_chunk_ids = {}
+
+        for chunk_info in chunks_info:
+            chunk_text = chunk_info["text"]
+            chunk_index = chunk_info["chunk_index"]
+            parent_index = chunk_info["parent_index"]
+            is_parent = chunk_info["is_parent"]
+
+            # 创建向量嵌入
+            embedding = await create_embedding(chunk_text)
+
+            # 存储到数据库
+            vector_chunk = VectorChunk(
+                document_id=document_id,
+                chunk_text=chunk_text,
+                embedding=embedding,
+                chunk_index=chunk_index
+            )
+
+            db.add(vector_chunk)
+            db.flush()  # 获取 ID
+
+            # 如果是父块，记录其 ID
+            if is_parent:
+                parent_chunk_ids[parent_index] = vector_chunk.id
+            else:
+                # 如果是子块，设置父块 ID
+                if parent_index in parent_chunk_ids:
+                    vector_chunk.parent_chunk_id = parent_chunk_ids[parent_index]
+                    db.flush()
 
         db.commit()
 

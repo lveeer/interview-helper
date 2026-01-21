@@ -19,6 +19,7 @@ class KnowledgeDocument(Base):
     chunk_count = Column(Integer, default=0)
     error_message = Column(Text)
     category = Column(String(50), default="")  # 文档分类：技术文档、面试题、公司资料、其他、空字符串
+    chunk_strategy = Column(String(50), default="semantic")  # 分段策略：semantic(语义分段), parent_child(父子分段), recursive(递归分段)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
@@ -33,10 +34,12 @@ class VectorChunk(Base):
     chunk_text = Column(Text, nullable=False)
     embedding = Column(Vector(1024))  # pgvector 存储
     chunk_index = Column(Integer)
+    parent_chunk_id = Column(Integer, ForeignKey("vector_chunks.id"), nullable=True)  # 父块 ID，用于父子分段
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     document = relationship("KnowledgeDocument", backref="chunks")
+    parent_chunk = relationship("VectorChunk", remote_side=[id], backref="child_chunks")
 
 
 class QueryHistory(Base):

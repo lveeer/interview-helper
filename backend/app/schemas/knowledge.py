@@ -13,6 +13,7 @@ class KnowledgeDocumentResponse(BaseModel):
     file_name: str
     file_type: str
     category: str
+    chunk_strategy: str
     created_at: datetime
 
     class Config:
@@ -45,3 +46,27 @@ class CategoryUpdateRequest(BaseModel):
 
 class QueryHistoryRequest(BaseModel):
     query: str
+
+
+class ChunkStrategyRequest(BaseModel):
+    chunk_strategy: str = "semantic"  # 默认语义分段
+
+    @field_validator('chunk_strategy')
+    @classmethod
+    def validate_chunk_strategy(cls, v):
+        valid_strategies = ["semantic", "parent_child", "recursive"]
+        if v not in valid_strategies:
+            raise ValueError(f"分段策略必须是以下之一: {', '.join(valid_strategies)}")
+        return v
+
+
+class ChunkStrategyUpdateRequest(BaseModel):
+    chunk_strategy: str
+
+    @field_validator('chunk_strategy')
+    @classmethod
+    def validate_chunk_strategy(cls, v):
+        valid_strategies = ["semantic", "parent_child", "recursive"]
+        if v not in valid_strategies:
+            raise ValueError(f"分段策略必须是以下之一: {', '.join(valid_strategies)}")
+        return v

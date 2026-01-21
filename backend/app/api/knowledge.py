@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query
 from sqlalchemy.orm import Session
 from typing import List
 from app.core.database import get_db
@@ -9,7 +9,8 @@ from app.schemas.knowledge import (
     KnowledgeQuery,
     DocumentPreviewResponse,
     CategoryUpdateRequest,
-    QueryHistoryRequest
+    QueryHistoryRequest,
+    ChunkStrategyUpdateRequest
 )
 from app.api.auth import get_current_user
 import os
@@ -21,11 +22,20 @@ router = APIRouter()
 @router.post("/upload", status_code=201)
 async def upload_knowledge(
     file: UploadFile = File(...),
+    chunk_strategy: str = Query("semantic", description="分段策略：semantic(语义分段), parent_child(父子分段), recursive(递归分段)"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """上传知识库文档"""
     from app.schemas.common import ApiResponse
+
+    # 验证分段策略
+    valid_strategies = ["semantic", "parent_child", "recursive"]
+    if chunk_strategy not in valid_strategies:
+        raise HTTPException(
+            status_code=400,
+            detail=f"分段策略必须是以下之一: {', '.join(valid_strategies)}"
+        )
 
     # 保存文件
     upload_dir = os.path.join(settings.UPLOAD_DIR, "knowledge")
@@ -41,7 +51,8 @@ async def upload_knowledge(
         user_id=current_user.id,
         file_name=file.filename,
         file_path=file_path,
-        file_type=os.path.splitext(file.filename)[1][1:]
+        file_type=os.path.splitext(file.filename)[1][1:],
+        chunk_strategy=chunk_strategy
     )
     db.add(db_doc)
     db.commit()
@@ -50,7 +61,7 @@ async def upload_knowledge(
     # 调用 RAG 服务处理文档
     try:
         from app.services.rag_service import RAGService
-        await RAGService.process_document(db_doc.id, file_path, db)
+        await RAGService.process_document(db_doc.id, file_path, db, chunk_strategy=chunk_strategy)
     except Exception as e:
         print(f"知识库文档处理失败: {e}")
         # 处理失败不影响文档上传
@@ -279,8 +290,9 @@ async def get_document_preview(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """获取文档预览内容"""
+    """获取文档分段预览内容"""
     from app.schemas.common import ApiResponse
+    from app.models.knowledge import VectorChunk
 
     doc = db.query(KnowledgeDocument).filter(
         KnowledgeDocument.id == doc_id,
@@ -293,16 +305,45 @@ async def get_document_preview(
             detail="文档不存在"
         )
 
-    # 获取文档内容，如果内容过长则截断
-    content = doc.content or ""
-    max_length = 5000
-    if len(content) > max_length:
-        content = content[:max_length] + "\n\n... (内容过长，已截断)"
+    # 获取文档的所有分段，按 chunk_index 排序
+    chunks = db.query(VectorChunk).filter(
+        VectorChunk.document_id == doc_id
+    ).order_by(VectorChunk.chunk_index).all()
+
+    # 如果没有分段，返回原始内容
+    if not chunks:
+        content = doc.content or ""
+        max_length = 5000
+        if len(content) > max_length:
+            content = content[:max_length] + "\n\n... (内容过长，已截断)"
+        return ApiResponse(
+            code=200,
+            message="success",
+            data={
+                "chunks": [{"index": 0, "content": content}],
+                "total_chunks": 1,
+                "chunk_strategy": doc.chunk_strategy
+            }
+        )
+
+    # 返回分段内容列表
+    chunk_list = [
+        {
+            "index": chunk.chunk_index,
+            "content": chunk.chunk_text,
+            "parent_chunk_id": chunk.parent_chunk_id
+        }
+        for chunk in chunks
+    ]
 
     return ApiResponse(
         code=200,
         message="success",
-        data=DocumentPreviewResponse(content=content)
+        data={
+            "chunks": chunk_list,
+            "total_chunks": len(chunks),
+            "chunk_strategy": doc.chunk_strategy
+        }
     )
 
 
@@ -331,3 +372,51 @@ async def update_document_category(
     db.commit()
 
     return SuccessResponse(message="分类更新成功")
+
+
+@router.put("/{doc_id}/chunk-strategy")
+async def update_document_chunk_strategy(
+    doc_id: int,
+    strategy_update: ChunkStrategyUpdateRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """更新文档分段策略并重新处理"""
+    from app.schemas.common import ApiResponse
+    from app.services.rag_service import RAGService
+
+    doc = db.query(KnowledgeDocument).filter(
+        KnowledgeDocument.id == doc_id,
+        KnowledgeDocument.user_id == current_user.id
+    ).first()
+
+    if not doc:
+        raise HTTPException(
+            status_code=404,
+            detail="文档不存在"
+        )
+
+    # 删除旧的文本块
+    await RAGService.delete_document_chunks(doc_id, db)
+
+    # 更新分段策略
+    doc.chunk_strategy = strategy_update.chunk_strategy
+    doc.status = "processing"
+    doc.chunk_count = 0
+    db.commit()
+
+    # 重新处理文档
+    try:
+        await RAGService.process_document(doc_id, doc.file_path, db, chunk_strategy=strategy_update.chunk_strategy)
+    except Exception as e:
+        print(f"文档重新处理失败: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"文档重新处理失败: {str(e)}"
+        )
+
+    return ApiResponse(
+        code=200,
+        message="分段策略更新成功，文档已重新处理",
+        data=KnowledgeDocumentResponse.model_validate(doc)
+    )

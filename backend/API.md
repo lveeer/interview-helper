@@ -851,7 +851,7 @@ Authorization: Bearer <access_token>
 }
 ```
 
-### 5.4 获取文档预览
+### 5.4 获取文档分段预览
 
 **接口:** `GET /api/knowledge/{doc_id}/preview`
 
@@ -863,16 +863,60 @@ Authorization: Bearer <access_token>
 **路径参数:**
 - `doc_id`: 文档 ID
 
-**响应:**
+**功能:** 获取文档的分段预览内容，返回按 chunk_index 排序的所有分段
+
+**响应（已分段文档）:**
 ```json
 {
   "code": 200,
   "message": "success",
   "data": {
-    "content": "文档内容..."
+    "chunks": [
+      {
+        "index": 0,
+        "content": "第一个分段内容...",
+        "parent_chunk_id": null
+      },
+      {
+        "index": 1,
+        "content": "第二个分段内容...",
+        "parent_chunk_id": null
+      }
+    ],
+    "total_chunks": 2,
+    "chunk_strategy": "semantic"
   }
 }
 ```
+
+**响应（未分段文档）:**
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "chunks": [
+      {
+        "index": 0,
+        "content": "文档原始内容..."
+      }
+    ],
+    "total_chunks": 1,
+    "chunk_strategy": "semantic"
+  }
+}
+```
+
+**字段说明:**
+- `chunks`: 分段数组
+  - `index`: 分段索引，从 0 开始
+  - `content`: 分段文本内容
+  - `parent_chunk_id`: 父块 ID（用于父子分段策略），null 表示无父块
+- `total_chunks`: 分段总数
+- `chunk_strategy`: 使用的分段策略
+  - `semantic`: 语义分段
+  - `parent_child`: 父子分段
+  - `recursive`: 递归分段
 
 ### 5.5 更新文档分类
 
