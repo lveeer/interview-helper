@@ -91,10 +91,6 @@
               <el-icon class="ios-btn-icon"><Setting /></el-icon>
               <span class="ios-btn-label">LLM 配置</span>
             </div>
-            <div class="ios-action-btn mac-pink" @click="goToRecallTest">
-              <el-icon class="ios-btn-icon"><DataAnalysis /></el-icon>
-              <span class="ios-btn-label">召回测试</span>
-            </div>
           </div>
         </el-card>
       </el-col>
@@ -172,7 +168,6 @@ const goToInterview = () => router.push('/interview')
 const goToJobMatch = () => router.push('/job-match')
 const goToKnowledge = () => router.push('/knowledge')
 const goToLLMConfig = () => router.push('/llm-config')
-const goToRecallTest = () => router.push('/recall-test')
 
 const formatDate = (dateString) => {
   if (!dateString) return ''
@@ -521,21 +516,6 @@ onMounted(() => {
 .mac-gray:hover {
   background: linear-gradient(135deg, #4D4BBE 0%, #2E2C8F 100%);
   box-shadow: 0 6px 24px rgba(88, 86, 214, 0.35);
-}
-
-/* 召回测试 - iOS 15+ Pink */
-.mac-pink {
-  background: linear-gradient(135deg, #FF2D55 0%, #FF375F 100%);
-  box-shadow: 0 4px 16px rgba(255, 45, 85, 0.25);
-}
-
-.mac-pink .ios-btn-icon {
-  color: #FFFFFF;
-}
-
-.mac-pink:hover {
-  background: linear-gradient(135deg, #E6264D 0%, #E63156 100%);
-  box-shadow: 0 6px 24px rgba(255, 45, 85, 0.35);
 }
 
 /* 最近面试区域 */

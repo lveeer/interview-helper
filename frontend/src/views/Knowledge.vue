@@ -20,6 +20,10 @@
                   <el-option label="公司资料" value="公司资料" />
                   <el-option label="其他" value="其他" />
                 </el-select>
+                <el-button type="warning" @click="goToRecallTest" style="margin-right: 10px;">
+                  <el-icon><DataAnalysis /></el-icon>
+                  召回测试
+                </el-button>
                 <el-button type="primary" @click="showUploadDialog = true">
                   <el-icon><Upload /></el-icon>
                   上传文档
@@ -287,8 +291,9 @@
 
 <script setup>
 import { ref, onMounted, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { InfoFilled, Connection, Files } from '@element-plus/icons-vue'
+import { InfoFilled, Connection, Files, DataAnalysis } from '@element-plus/icons-vue'
 import {
   getKnowledgeList,
   uploadKnowledge,
@@ -302,6 +307,7 @@ import {
   CHUNK_STRATEGY_OPTIONS
 } from '@/api/knowledge'
 
+const router = useRouter()
 const loading = ref(false)
 const uploading = ref(false)
 const querying = ref(false)
@@ -578,6 +584,10 @@ const handleUpdateChunkStrategy = async () => {
 }
 
 // 获取策略标签
+const goToRecallTest = () => {
+  router.push('/recall-test')
+}
+
 const getStrategyLabel = (strategy) => {
   const option = CHUNK_STRATEGY_OPTIONS.find(opt => opt.value === strategy)
   return option ? option.label : strategy
