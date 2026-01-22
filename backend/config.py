@@ -15,6 +15,9 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 43200
 
+    # API Key 加密密钥
+    ENCRYPTION_KEY: str = ""
+
     # LiteLLM 配置
     LITELLM_MODEL: str = "qwen/qwen-turbo"
     LITELLM_API_KEY: str = ""

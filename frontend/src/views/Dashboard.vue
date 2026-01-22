@@ -67,30 +67,34 @@
             </div>
           </template>
           <div class="quick-actions">
-            <el-button type="primary" @click="goToResume">
-              <el-icon><Upload /></el-icon>
-              上传简历
-            </el-button>
-            <el-button type="success" @click="goToResumeOptimize">
-              <el-icon><MagicStick /></el-icon>
-              简历优化
-            </el-button>
-            <el-button type="success" @click="goToInterview">
-              <el-icon><ChatDotRound /></el-icon>
-              开始面试
-            </el-button>
-            <el-button type="warning" @click="goToJobMatch">
-              <el-icon><TrendCharts /></el-icon>
-              岗位匹配
-            </el-button>
-            <el-button type="info" @click="goToKnowledge">
-              <el-icon><Reading /></el-icon>
-              知识库
-            </el-button>
-            <el-button type="primary" plain @click="goToLLMConfig">
-              <el-icon><Setting /></el-icon>
-              LLM 配置
-            </el-button>
+            <div class="ios-action-btn mac-blue" @click="goToResume">
+              <el-icon class="ios-btn-icon"><Upload /></el-icon>
+              <span class="ios-btn-label">上传简历</span>
+            </div>
+            <div class="ios-action-btn mac-green" @click="goToResumeOptimize">
+              <el-icon class="ios-btn-icon"><MagicStick /></el-icon>
+              <span class="ios-btn-label">简历优化</span>
+            </div>
+            <div class="ios-action-btn mac-teal" @click="goToInterview">
+              <el-icon class="ios-btn-icon"><ChatDotRound /></el-icon>
+              <span class="ios-btn-label">开始面试</span>
+            </div>
+            <div class="ios-action-btn mac-orange" @click="goToJobMatch">
+              <el-icon class="ios-btn-icon"><TrendCharts /></el-icon>
+              <span class="ios-btn-label">岗位匹配</span>
+            </div>
+            <div class="ios-action-btn mac-purple" @click="goToKnowledge">
+              <el-icon class="ios-btn-icon"><Reading /></el-icon>
+              <span class="ios-btn-label">知识库</span>
+            </div>
+            <div class="ios-action-btn mac-gray" @click="goToLLMConfig">
+              <el-icon class="ios-btn-icon"><Setting /></el-icon>
+              <span class="ios-btn-label">LLM 配置</span>
+            </div>
+            <div class="ios-action-btn mac-pink" @click="goToRecallTest">
+              <el-icon class="ios-btn-icon"><DataAnalysis /></el-icon>
+              <span class="ios-btn-label">召回测试</span>
+            </div>
           </div>
         </el-card>
       </el-col>
@@ -168,6 +172,7 @@ const goToInterview = () => router.push('/interview')
 const goToJobMatch = () => router.push('/job-match')
 const goToKnowledge = () => router.push('/knowledge')
 const goToLLMConfig = () => router.push('/llm-config')
+const goToRecallTest = () => router.push('/recall-test')
 
 const formatDate = (dateString) => {
   if (!dateString) return ''
@@ -367,99 +372,170 @@ onMounted(() => {
   min-height: 100px;
 }
 
-/* 快速操作区域 */
+/* 快速操作区域 - 苹果大卡片式设计 */
 .quick-actions {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 20px;
-  gap: var(--spacing-lg, 20px);
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
   padding: 16px 0;
 }
 
-.quick-actions .el-button {
-  height: 100px;
-  padding: 20px;
-  padding: var(--spacing-lg, 20px);
-  border-radius: 8px;
-  border-radius: var(--radius-md, 8px);
-  font-size: 14px;
-  font-size: var(--font-size-base, 14px);
-  font-weight: 500;
-  font-weight: var(--font-weight-medium, 500);
+.ios-action-btn {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  gap: var(--spacing-sm, 8px);
-  transition: all 0.2s;
-  transition: all var(--transition-base, 0.2s);
-  border: 1px solid transparent;
+  gap: 20px;
+  height: 112px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease-out;
   position: relative;
-  overflow: hidden;
-  min-width: 120px;
-  box-sizing: border-box;
-  width: 100%;
-  margin: 0;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.quick-actions .el-button::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(135deg, transparent 0%, rgba(255, 255, 255, 0.2) 100%);
-  opacity: 0;
-  transition: opacity var(--transition-base);
+.ios-action-btn:hover {
+  transform: translateY(-2px);
 }
 
-.quick-actions .el-button:hover::before {
-  opacity: 1;
+.ios-action-btn:active {
+  transform: scale(0.98);
 }
 
-.quick-actions .el-button .el-icon {
-  font-size: 24px;
-  transition: transform var(--transition-base);
+.ios-btn-icon {
+  font-size: 32px;
+  transition: all 0.2s ease-out;
+  position: relative;
+  z-index: 2;
 }
 
-.quick-actions .el-button:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-lg);
+.ios-btn-icon .el-icon {
+  font-size: 32px;
+  transition: transform 0.2s ease-out;
 }
 
-.quick-actions .el-button:hover .el-icon {
-  transform: scale(1.2);
+.ios-action-btn:hover .ios-btn-icon .el-icon {
+  transform: scale(1.05);
 }
 
-/* 按钮特定样式 */
-.quick-actions .el-button--primary {
-  background: linear-gradient(135deg, #409EFF 0%, #337ecc 100%);
-  background: linear-gradient(135deg, var(--primary-color, #409EFF) 0%, var(--primary-dark, #337ecc) 100%);
-  border-color: #409EFF;
-  border-color: var(--primary-color, #409EFF);
+.ios-btn-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #FFFFFF;
+  color: var(--text-white, #FFFFFF);
+  text-align: center;
+  position: relative;
+  z-index: 2;
+  letter-spacing: -0.005em;
+  padding: 0 8px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
 }
 
-.quick-actions .el-button--success {
-  background: linear-gradient(135deg, #67C23A 0%, #5daf34 100%);
-  background: linear-gradient(135deg, var(--success-color, #67C23A) 0%, #5daf34 100%);
-  border-color: #67C23A;
-  border-color: var(--success-color, #67C23A);
+/* 苹果大卡片式 - Apple 历年经典配色系统 */
+/* 上传简历 - iOS 15+ Apple Blue */
+.mac-blue {
+  background: linear-gradient(135deg, #007AFF 0%, #0051D5 100%);
+  box-shadow: 0 4px 16px rgba(0, 122, 255, 0.25);
 }
 
-.quick-actions .el-button--warning {
-  background: linear-gradient(135deg, #E6A23C 0%, #cf9236 100%);
-  background: linear-gradient(135deg, var(--warning-color, #E6A23C) 0%, #cf9236 100%);
-  border-color: #E6A23C;
-  border-color: var(--warning-color, #E6A23C);
+.mac-blue .ios-btn-icon {
+  color: #FFFFFF;
 }
 
-.quick-actions .el-button--info {
-  background: linear-gradient(135deg, #909399 0%, #7a7e85 100%);
-  background: linear-gradient(135deg, var(--info-color, #909399) 0%, #7a7e85 100%);
-  border-color: #909399;
-  border-color: var(--info-color, #909399);
+.mac-blue:hover {
+  background: linear-gradient(135deg, #0066CC 0%, #0041AA 100%);
+  box-shadow: 0 6px 24px rgba(0, 122, 255, 0.35);
+}
+
+/* 简历优化 - macOS Big Sur Green */
+.mac-green {
+  background: linear-gradient(135deg, #34C759 0%, #248A3D 100%);
+  box-shadow: 0 4px 16px rgba(52, 199, 89, 0.25);
+}
+
+.mac-green .ios-btn-icon {
+  color: #FFFFFF;
+}
+
+.mac-green:hover {
+  background: linear-gradient(135deg, #2DB54E 0%, #1E6E32 100%);
+  box-shadow: 0 6px 24px rgba(52, 199, 89, 0.35);
+}
+
+/* 开始面试 - iOS 7+ Teal/Cyan */
+.mac-teal {
+  background: linear-gradient(135deg, #32ADE6 0%, #007AFF 100%);
+  box-shadow: 0 4px 16px rgba(50, 173, 230, 0.25);
+}
+
+.mac-teal .ios-btn-icon {
+  color: #FFFFFF;
+}
+
+.mac-teal:hover {
+  background: linear-gradient(135deg, #2A96C9 0%, #0066CC 100%);
+  box-shadow: 0 6px 24px rgba(50, 173, 230, 0.35);
+}
+
+/* 岗位匹配 - iOS 13+ Orange */
+.mac-orange {
+  background: linear-gradient(135deg, #FF9500 0%, #FF6B00 100%);
+  box-shadow: 0 4px 16px rgba(255, 149, 0, 0.25);
+}
+
+.mac-orange .ios-btn-icon {
+  color: #FFFFFF;
+}
+
+.mac-orange:hover {
+  background: linear-gradient(135deg, #E68600 0%, #E65C00 100%);
+  box-shadow: 0 6px 24px rgba(255, 149, 0, 0.35);
+}
+
+/* 知识库 - iOS 8+ Purple */
+.mac-purple {
+  background: linear-gradient(135deg, #AF52DE 0%, #7C3AED 100%);
+  box-shadow: 0 4px 16px rgba(175, 82, 222, 0.25);
+}
+
+.mac-purple .ios-btn-icon {
+  color: #FFFFFF;
+}
+
+.mac-purple:hover {
+  background: linear-gradient(135deg, #9E47C7 0%, #6B33D4 100%);
+  box-shadow: 0 6px 24px rgba(175, 82, 222, 0.35);
+}
+
+/* LLM 配置 - macOS Monterey Indigo */
+.mac-gray {
+  background: linear-gradient(135deg, #5856D6 0%, #3634A3 100%);
+  box-shadow: 0 4px 16px rgba(88, 86, 214, 0.25);
+}
+
+.mac-gray .ios-btn-icon {
+  color: #FFFFFF;
+}
+
+.mac-gray:hover {
+  background: linear-gradient(135deg, #4D4BBE 0%, #2E2C8F 100%);
+  box-shadow: 0 6px 24px rgba(88, 86, 214, 0.35);
+}
+
+/* 召回测试 - iOS 15+ Pink */
+.mac-pink {
+  background: linear-gradient(135deg, #FF2D55 0%, #FF375F 100%);
+  box-shadow: 0 4px 16px rgba(255, 45, 85, 0.25);
+}
+
+.mac-pink .ios-btn-icon {
+  color: #FFFFFF;
+}
+
+.mac-pink:hover {
+  background: linear-gradient(135deg, #E6264D 0%, #E63156 100%);
+  box-shadow: 0 6px 24px rgba(255, 45, 85, 0.35);
 }
 
 /* 最近面试区域 */
@@ -506,13 +582,26 @@ onMounted(() => {
   }
 
   .quick-actions {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
   }
 
-  .quick-actions .el-button {
-    flex-direction: row;
-    justify-content: flex-start;
-    padding: var(--spacing-sm) var(--spacing-md);
+  .ios-action-btn {
+    height: 96px;
+    gap: 16px;
+    border-radius: 12px;
+  }
+
+  .ios-btn-icon {
+    font-size: 28px;
+  }
+
+  .ios-btn-icon .el-icon {
+    font-size: 28px;
+  }
+
+  .ios-btn-label {
+    font-size: 13px;
   }
 
   :deep(.el-card__header),

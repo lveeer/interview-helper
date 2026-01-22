@@ -51,3 +51,38 @@ class QueryHistory(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     user = relationship("User", backref="query_history")
+
+
+class RecallTestCase(Base):
+    __tablename__ = "recall_test_cases"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    query = Column(Text, nullable=False)
+    expected_chunk_ids = Column(Text, nullable=False)  # JSON 格式存储期望的分段 ID 列表
+    description = Column(Text)  # 测试用例描述
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    user = relationship("User", backref="recall_test_cases")
+
+
+class RecallTestResult(Base):
+    __tablename__ = "recall_test_results"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    test_case_id = Column(Integer, ForeignKey("recall_test_cases.id"), nullable=False)
+    retrieved_chunk_ids = Column(Text, nullable=False)  # JSON 格式存储实际召回的分段 ID 列表
+    retrieved_scores = Column(Text, nullable=False)  # JSON 格式存储召回分数列表
+    recall = Column(Integer)  # 召回率（百分比）
+    precision = Column(Integer)  # 精确率（百分比）
+    f1_score = Column(Integer)  # F1 分数（百分比）
+    mrr = Column(Integer)  # 平均倒数排名（百分比）
+    use_query_expansion = Column(Integer)  # 是否使用查询扩展（0/1）
+    use_hybrid_search = Column(Integer)  # 是否使用混合检索（0/1）
+    use_reranking = Column(Integer)  # 是否使用重排序（0/1）
+    top_k = Column(Integer)  # 召回数量
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    user = relationship("User", backref="recall_test_results")
+    test_case = relationship("RecallTestCase", backref="test_results")

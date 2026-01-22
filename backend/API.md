@@ -1030,6 +1030,248 @@ Authorization: Bearer <access_token>
 
 ---
 
+## 6. 召回测试模块 (`/api/knowledge/recall-test`)
+
+### 6.1 创建召回测试用例
+
+**接口:** `POST /api/knowledge/recall-test/cases`
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**请求体:**
+```json
+{
+  "query": "查询问题",
+  "expected_chunk_ids": [1, 2, 3],
+  "description": "测试用例描述（可选）"
+}
+```
+
+**字段说明:**
+- `query`: 测试查询语句
+- `expected_chunk_ids`: 期望召回的分段 ID 列表
+- `description`: 测试用例描述（可选）
+
+**响应:**
+```json
+{
+  "code": 201,
+  "message": "测试用例创建成功",
+  "data": {
+    "id": 1,
+    "user_id": 1,
+    "query": "查询问题",
+    "expected_chunk_ids": [1, 2, 3],
+    "description": "测试用例描述",
+    "created_at": "2026-01-22T10:00:00Z"
+  }
+}
+```
+
+---
+
+### 6.2 获取召回测试用例列表
+
+**接口:** `GET /api/knowledge/recall-test/cases`
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**响应:**
+```json
+{
+  "code": 200,
+  "message": "获取成功",
+  "data": [
+    {
+      "id": 1,
+      "user_id": 1,
+      "query": "查询问题",
+      "expected_chunk_ids": [1, 2, 3],
+      "description": "测试用例描述",
+      "created_at": "2026-01-22T10:00:00Z"
+    }
+  ],
+  "total": 1
+}
+```
+
+---
+
+### 6.3 删除召回测试用例
+
+**接口:** `DELETE /api/knowledge/recall-test/cases/{test_case_id}`
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**路径参数:**
+- `test_case_id`: 测试用例 ID
+
+**响应:**
+```json
+{
+  "code": 200,
+  "message": "测试用例删除成功"
+}
+```
+
+---
+
+### 6.4 执行召回测试
+
+**接口:** `POST /api/knowledge/recall-test/run`
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**请求体:**
+```json
+{
+  "test_case_id": 1,
+  "top_k": 5,
+  "use_query_expansion": true,
+  "use_hybrid_search": true,
+  "use_reranking": true
+}
+```
+
+**字段说明:**
+- `test_case_id`: 测试用例 ID
+- `top_k`: 召回数量，默认 5
+- `use_query_expansion`: 是否使用查询扩展（可选，默认使用配置值）
+- `use_hybrid_search`: 是否使用混合检索（可选，默认使用配置值）
+- `use_reranking`: 是否使用重排序（可选，默认使用配置值）
+
+**响应:**
+```json
+{
+  "code": 201,
+  "message": "测试执行成功",
+  "data": {
+    "id": 1,
+    "user_id": 1,
+    "test_case_id": 1,
+    "retrieved_chunk_ids": [1, 2, 4, 5, 6],
+    "retrieved_scores": [0.95, 0.88, 0.82, 0.75, 0.70],
+    "recall": 67,
+    "precision": 40,
+    "f1_score": 50,
+    "mrr": 100,
+    "use_query_expansion": true,
+    "use_hybrid_search": true,
+    "use_reranking": true,
+    "top_k": 5,
+    "created_at": "2026-01-22T10:00:00Z"
+  }
+}
+```
+
+**指标说明:**
+- `recall`: 召回率（百分比）= 命中的期望分段数 / 总期望分段数
+- `precision`: 精确率（百分比）= 命中的期望分段数 / 总召回分段数
+- `f1_score`: F1 分数（百分比）= 2 * precision * recall / (precision + recall)
+- `mrr`: 平均倒数排名（百分比）= 1 / 第一次命中的位置
+
+---
+
+### 6.5 获取召回测试结果
+
+**接口:** `GET /api/knowledge/recall-test/results`
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**查询参数:**
+- `test_case_id` (可选): 测试用例 ID，不传则返回所有测试结果
+
+**响应:**
+```json
+{
+  "code": 200,
+  "message": "获取成功",
+  "data": [
+    {
+      "id": 1,
+      "user_id": 1,
+      "test_case_id": 1,
+      "retrieved_chunk_ids": [1, 2, 4, 5, 6],
+      "retrieved_scores": [0.95, 0.88, 0.82, 0.75, 0.70],
+      "recall": 67,
+      "precision": 40,
+      "f1_score": 50,
+      "mrr": 100,
+      "use_query_expansion": true,
+      "use_hybrid_search": true,
+      "use_reranking": true,
+      "top_k": 5,
+      "created_at": "2026-01-22T10:00:00Z"
+    }
+  ],
+  "total": 1
+}
+```
+
+---
+
+### 6.6 获取召回测试汇总统计
+
+**接口:** `GET /api/knowledge/recall-test/summary`
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**查询参数:**
+- `test_case_id` (可选): 测试用例 ID，不传则返回所有测试的汇总
+
+**响应:**
+```json
+{
+  "code": 200,
+  "message": "获取成功",
+  "data": {
+    "total_tests": 10,
+    "avg_recall": 75.5,
+    "avg_precision": 68.2,
+    "avg_f1_score": 71.6,
+    "avg_mrr": 85.3,
+    "results": [
+      {
+        "id": 1,
+        "user_id": 1,
+        "test_case_id": 1,
+        "retrieved_chunk_ids": [1, 2, 4, 5, 6],
+        "retrieved_scores": [0.95, 0.88, 0.82, 0.75, 0.70],
+        "recall": 67,
+        "precision": 40,
+        "f1_score": 50,
+        "mrr": 100,
+        "use_query_expansion": true,
+        "use_hybrid_search": true,
+        "use_reranking": true,
+        "top_k": 5,
+        "created_at": "2026-01-22T10:00:00Z"
+      }
+    ]
+  }
+}
+```
+
+---
+
 ## 6. LLM 配置管理模块 (`/api/llm-config`)
 
 ### 6.1 获取当前用户 LLM 配置

@@ -218,32 +218,122 @@ async def get_supported_providers():
         LLMProviderInfo(
             provider="dashscope",
             name="通义千问",
-            models=["qwen-turbo", "qwen-plus", "qwen-max", "qwen-long"],
-            description="阿里云通义千问大模型"
+            models=[
+                "qwen3-max",
+                "qwen3-max-longcontext",
+                "qwen3-plus",
+                "qwen3-turbo",
+                "qwen3-vl-plus",
+                "qwen3-vl-max",
+                "qwen3-coder-plus",
+                "qwen3-math-plus",
+                "qwen2.5-turbo",
+                "qwen2.5-plus",
+                "qwen2.5-max",
+                "qwen2.5-max-longcontext"
+            ],
+            description="阿里云通义千问大模型（Qwen3 系列，支持思考模式）"
         ),
         LLMProviderInfo(
             provider="ernie",
             name="文心一言",
-            models=["ernie-bot", "ernie-bot-turbo", "ernie-bot-4"],
+            models=[
+                "ernie-bot-4",
+                "ernie-bot-4-turbo",
+                "ernie-bot-3.5",
+                "ernie-bot-turbo",
+                "ernie-speed",
+                "ernie-lite",
+                "ernie-vision",
+                "ernie-function"
+            ],
             description="百度文心一言大模型"
         ),
         LLMProviderInfo(
             provider="openai",
             name="OpenAI",
-            models=["gpt-4", "gpt-4-turbo", "gpt-3.5-turbo"],
+            models=[
+                "gpt-4o",
+                "gpt-4o-mini",
+                "gpt-4-turbo",
+                "gpt-3.5-turbo",
+                "o1-preview",
+                "o1-mini",
+                "o3-mini"
+            ],
             description="OpenAI GPT 系列"
         ),
         LLMProviderInfo(
             provider="anthropic",
             name="Anthropic",
-            models=["claude-3-opus", "claude-3-sonnet", "claude-3-haiku"],
+            models=[
+                "claude-3.5-sonnet",
+                "claude-3.5-haiku",
+                "claude-3-opus",
+                "claude-3-sonnet",
+                "claude-3-haiku"
+            ],
             description="Anthropic Claude 系列"
         ),
         LLMProviderInfo(
             provider="ollama",
             name="Ollama",
-            models=["qwen2.5", "llama3", "mistral"],
+            models=[
+                "qwen2.5",
+                "qwen2.5-coder",
+                "qwen3",
+                "llama3.2",
+                "llama3.1",
+                "deepseek-v3",
+                "deepseek-r1",
+                "phi-3",
+                "gemma2"
+            ],
             description="本地部署的开源模型"
+        ),
+        LLMProviderInfo(
+            provider="zhipuai",
+            name="智谱 AI",
+            models=[
+                "glm-4.7",
+                "glm-4-plus",
+                "glm-4-air",
+                "glm-4-flash",
+                "glm-4v",
+                "glm-z1-air",
+                "glm-z1-airx",
+                "glm-z1-flash"
+            ],
+            description="智谱 AI GLM 系列（GLM-4.7 支持思考模式）"
+        ),
+        LLMProviderInfo(
+            provider="deepseek",
+            name="DeepSeek",
+            models=[
+                "deepseek-v3.2",
+                "deepseek-v3.1",
+                "deepseek-v3.1-terminus",
+                "deepseek-v3-0324",
+                "deepseek-r1-0528",
+                "deepseek-chat",
+                "deepseek-coder"
+            ],
+            description="DeepSeek 深度求索模型（V3.2 支持 GPT-5 水平推理）"
+        ),
+        LLMProviderInfo(
+            provider="moonshot",
+            name="Moonshot AI",
+            models=[
+                "kimi-k2",
+                "kimi-k2-turbo-preview",
+                "kimi-k2-thinking",
+                "kimi-latest",
+                "kimi-thinking-preview",
+                "moonshot-v1-8k",
+                "moonshot-v1-32k",
+                "moonshot-v1-128k"
+            ],
+            description="Moonshot AI Kimi 系列（K2 模型 1T 参数 MoE 架构）"
         )
     ]
 

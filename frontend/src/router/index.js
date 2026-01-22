@@ -80,6 +80,12 @@ const routes = [
         name: 'LLMConfig',
         component: () => import('@/views/LLMConfig.vue'),
         meta: { title: 'LLM 配置' }
+      },
+      {
+        path: '/recall-test',
+        name: 'RecallTest',
+        component: () => import('@/views/RecallTest.vue'),
+        meta: { title: '召回测试' }
       }
     ]
   }

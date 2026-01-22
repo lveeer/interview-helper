@@ -188,13 +188,14 @@ const loadConfig = async () => {
   loading.value = true
   try {
     const res = await getMyConfig()
-    config.value = res.data
+    const data = res.data || {}
+    config.value = data
     formData.value = {
-      provider: res.data.provider,
-      model_name: res.data.model_name,
-      api_key: res.data.api_key || '',
-      api_base: res.data.api_base || '',
-      is_active: res.data.is_active
+      provider: data.provider || '',
+      model_name: data.model_name || '',
+      api_key: data.api_key || '',
+      api_base: data.api_base || '',
+      is_active: data.is_active !== undefined ? data.is_active : true
     }
   } catch (error) {
     ElMessage.error('加载配置失败')
@@ -208,7 +209,10 @@ const handleProviderChange = () => {
   const provider = providers.value.find(p => p.provider === formData.value.provider)
   if (provider && provider.models.length > 0) {
     formData.value.model_name = provider.models[0]
-    formData.value.api_base = provider.default_api_base || ''
+    // 只有在 API 端点为空时才使用默认值，保留用户已填写的端点
+    if (!formData.value.api_base) {
+      formData.value.api_base = provider.default_api_base || ''
+    }
   }
 }
 
@@ -225,13 +229,13 @@ const handleTest = async () => {
   testLoading.value = true
   testResult.value = null
   try {
-    const data = await testConnection({
+    const res = await testConnection({
       provider: formData.value.provider,
       model_name: formData.value.model_name,
       api_key: formData.value.api_key,
       api_base: formData.value.api_base
     })
-    testResult.value = data
+    testResult.value = res.data
   } catch (error) {
     testResult.value = {
       success: false,

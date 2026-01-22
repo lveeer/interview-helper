@@ -10,7 +10,12 @@ from app.schemas.knowledge import (
     DocumentPreviewResponse,
     CategoryUpdateRequest,
     QueryHistoryRequest,
-    ChunkStrategyUpdateRequest
+    ChunkStrategyUpdateRequest,
+    RecallTestCaseCreate,
+    RecallTestCaseResponse,
+    RecallTestRunRequest,
+    RecallTestResultResponse,
+    RecallTestSummaryResponse
 )
 from app.api.auth import get_current_user
 import os
@@ -419,4 +424,146 @@ async def update_document_chunk_strategy(
         code=200,
         message="分段策略更新成功，文档已重新处理",
         data=KnowledgeDocumentResponse.model_validate(doc)
+    )
+
+
+# ==================== 召回测试相关接口 ====================
+
+@router.post("/recall-test/cases", status_code=201)
+async def create_recall_test_case(
+    test_case: RecallTestCaseCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """创建召回测试用例"""
+    from app.services.recall_test_service import RecallTestService
+    from app.schemas.common import ApiResponse
+
+    created_case = RecallTestService.create_test_case(
+        user_id=current_user.id,
+        query=test_case.query,
+        expected_chunk_ids=test_case.expected_chunk_ids,
+        description=test_case.description,
+        db=db
+    )
+
+    return ApiResponse(
+        code=201,
+        message="测试用例创建成功",
+        data=RecallTestCaseResponse.model_validate(created_case)
+    )
+
+
+@router.get("/recall-test/cases")
+async def get_recall_test_cases(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """获取所有召回测试用例"""
+    from app.services.recall_test_service import RecallTestService
+    from app.schemas.common import ListResponse
+
+    test_cases = RecallTestService.get_test_cases(current_user.id, db)
+
+    return ListResponse(
+        code=200,
+        message="获取成功",
+        data=[RecallTestCaseResponse.model_validate(tc) for tc in test_cases],
+        total=len(test_cases)
+    )
+
+
+@router.delete("/recall-test/cases/{test_case_id}")
+async def delete_recall_test_case(
+    test_case_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """删除召回测试用例"""
+    from app.services.recall_test_service import RecallTestService
+    from app.schemas.common import SuccessResponse
+
+    success = RecallTestService.delete_test_case(test_case_id, current_user.id, db)
+    if not success:
+        raise HTTPException(status_code=404, detail="测试用例不存在")
+
+    return SuccessResponse(message="测试用例删除成功")
+
+
+@router.post("/recall-test/run", status_code=201)
+async def run_recall_test(
+    test_request: RecallTestRunRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """执行召回测试"""
+    from app.services.recall_test_service import RecallTestService
+    from app.schemas.common import ApiResponse
+    from config import settings
+
+    # 使用配置默认值或用户指定的值
+    use_query_expansion = test_request.use_query_expansion if test_request.use_query_expansion is not None else settings.ENABLE_QUERY_EXPANSION
+    use_hybrid_search = test_request.use_hybrid_search if test_request.use_hybrid_search is not None else settings.ENABLE_HYBRID_SEARCH
+    use_reranking = test_request.use_reranking if test_request.use_reranking is not None else settings.ENABLE_RERANKING
+
+    test_result = await RecallTestService.run_test(
+        user_id=current_user.id,
+        test_case_id=test_request.test_case_id,
+        top_k=test_request.top_k,
+        use_query_expansion=use_query_expansion,
+        use_hybrid_search=use_hybrid_search,
+        use_reranking=use_reranking,
+        db=db
+    )
+
+    return ApiResponse(
+        code=201,
+        message="测试执行成功",
+        data=RecallTestResultResponse.model_validate(test_result)
+    )
+
+
+@router.get("/recall-test/results")
+async def get_recall_test_results(
+    test_case_id: int = Query(None, description="测试用例 ID，不传则返回所有测试结果"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """获取召回测试结果"""
+    from app.services.recall_test_service import RecallTestService
+    from app.schemas.common import ListResponse
+
+    results = RecallTestService.get_test_results(current_user.id, test_case_id, db)
+
+    return ListResponse(
+        code=200,
+        message="获取成功",
+        data=[RecallTestResultResponse.model_validate(r) for r in results],
+        total=len(results)
+    )
+
+
+@router.get("/recall-test/summary")
+async def get_recall_test_summary(
+    test_case_id: int = Query(None, description="测试用例 ID，不传则返回所有测试的汇总"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """获取召回测试汇总统计"""
+    from app.services.recall_test_service import RecallTestService
+    from app.schemas.common import ApiResponse
+
+    summary = RecallTestService.get_test_summary(current_user.id, test_case_id, db)
+
+    return ApiResponse(
+        code=200,
+        message="获取成功",
+        data={
+            "total_tests": summary["total_tests"],
+            "avg_recall": summary["avg_recall"],
+            "avg_precision": summary["avg_precision"],
+            "avg_f1_score": summary["avg_f1_score"],
+            "avg_mrr": summary["avg_mrr"],
+            "results": [RecallTestResultResponse.model_validate(r) for r in summary["results"]]
+        }
     )
