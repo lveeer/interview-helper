@@ -398,6 +398,9 @@ onMounted(() => {
   position: relative;
   overflow: hidden;
   min-width: 120px;
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0;
 }
 
 .quick-actions .el-button::before {

@@ -1,0 +1,151 @@
+version: '3.8'
+
+services:
+  # PostgreSQL 数据库（带 pgvector 扩展）
+  postgres:
+    image: pgvector/pgvector:pg15
+    container_name: interview-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-interview}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-interview123}
+      POSTGRES_DB: ${POSTGRES_DB:-interview_helper}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-interview}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - interview-network
+
+  # Redis 缓存
+  redis:
+    image: redis:7-alpine
+    container_name: interview-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - interview-network
+
+  # Ollama LLM 服务
+  ollama:
+    image: ollama/ollama:latest
+    container_name: interview-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    environment:
+      - OLLAMA_KEEP_ALIVE=-1
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+    networks:
+      - interview-network
+
+  # 后端服务
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: interview-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-interview}:${POSTGRES_PASSWORD:-interview123}@postgres:5432/${POSTGRES_DB:-interview_helper}
+      - POSTGRES_USER=${POSTGRES_USER:-interview}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-interview123}
+      - POSTGRES_DB=${POSTGRES_DB:-interview_helper}
+      - SECRET_KEY=${SECRET_KEY:-your-secret-key-change-this-in-production}
+      - ALGORITHM=HS256
+      - ACCESS_TOKEN_EXPIRE_MINUTES=43200
+      - LITELLM_MODEL=${LITELLM_MODEL:-dashscope/qwen-turbo}
+      - LITELLM_API_KEY=${LITELLM_API_KEY:-}
+      - LITELLM_API_BASE=${LITELLM_API_BASE:-}
+      - IFLOW_API_KEY=${IFLOW_API_KEY:-}
+      - IFLOW_API_URL=${IFLOW_API_URL:-https://apis.iflow.cn/v1/chat/completions}
+      - IFLOW_MODEL=${IFLOW_MODEL:-tstars2.0}
+      - DASHSCOPE_API_KEY=${DASHSCOPE_API_KEY:-}
+      - ERNIE_API_KEY=${ERNIE_API_KEY:-}
+      - ERNIE_SECRET_KEY=${ERNIE_SECRET_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - UPLOAD_DIR=/app/uploads
+      - MAX_UPLOAD_SIZE=10485760
+      - ALLOWED_EXTENSIONS=.pdf,.docx,.doc
+      - CORS_ORIGINS=http://localhost:5173,http://localhost:3000
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - OLLAMA_EMBEDDING_MODEL=${OLLAMA_EMBEDDING_MODEL:-mxbai-embed-large}
+      - OLLAMA_LLM_MODEL=${OLLAMA_LLM_MODEL:-qwen2.5}
+      - VECTOR_DIMENSION=1024
+      - EMBEDDING_MODEL=ollama
+      - EMBEDDING_PROVIDER=ollama
+      - CHUNK_SIZE=500
+      - CHUNK_OVERLAP=50
+      - TOP_K=5
+      - ENABLE_QUERY_EXPANSION=true
+      - QUERY_EXPANSION_COUNT=3
+      - ENABLE_HYBRID_SEARCH=true
+      - ENABLE_RERANKING=true
+      - RERANK_TOP_K=10
+    volumes:
+      - backend_uploads:/app/uploads
+      - backend_logs:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    networks:
+      - interview-network
+
+  # 前端服务
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: interview-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - interview-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  ollama_data:
+    driver: local
+  backend_uploads:
+    driver: local
+  backend_logs:
+    driver: local
+
+networks:
+  interview-network:
+    driver: bridge

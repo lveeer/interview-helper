@@ -1,0 +1,63 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv/
+*.egg-info/
+dist/
+build/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+*.log
+logs/
+server.log
+
+# Environment
+.env
+.env.local
+.env.example
+
+# Uploads
+uploads/*.pdf
+uploads/*.docx
+uploads/*.doc
+uploads/*.txt
+
+# Test
+tests/
+test_*.py
+*_test.py
+
+# Documentation
+*.md
+docs/
+
+# Misc
+.cache/
+coverage/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+
+# Alembic
+alembic/versions/*.pyc
+alembic/versions/__pycache__/
