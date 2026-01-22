@@ -370,7 +370,7 @@ onMounted(() => {
 /* 快速操作区域 - 苹果大卡片式设计 */
 .quick-actions {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 16px;
   padding: 16px 0;
 }
