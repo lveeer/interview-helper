@@ -77,6 +77,10 @@
           <el-icon><Reading /></el-icon>
           <span>知识库</span>
         </el-menu-item>
+        <el-menu-item index="/resume-finder-game">
+          <el-icon><Trophy /></el-icon>
+          <span>简历找茬</span>
+        </el-menu-item>
         <el-menu-item index="/llm-config">
           <el-icon><Setting /></el-icon>
           <span>LLM 配置</span>

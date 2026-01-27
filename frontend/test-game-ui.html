@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>简历找茬游戏 - UI 测试</title>
+    <script src="https://cdn.jsdelivr.net/npm/vue@3.3.4/dist/vue.global.prod.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-plus@2.3.14/dist/index.css">
+    <script src="https://cdn.jsdelivr.net/npm/element-plus@2.3.14/dist/index.full.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #f5f7fa;
+            padding: 20px;
+        }
+        .resume-finder-game {
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        /* 游戏开始界面 */
+        .game-start-screen {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .welcome-card {
+            animation: fadeIn 0.5s ease-out;
+        }
+        .card-header {
+            font-size: 20px;
+            font-weight: 600;
+            color: #303133;
+        }
+        .game-description {
+            margin: 20px 0;
+            padding: 16px;
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+            border-radius: 8px;
+        }
+        .game-description p {
+            font-size: 16px;
+            color: #303133;
+            margin-bottom: 12px;
+            font-weight: 500;
+        }
+        .game-description ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .game-description li {
+            padding: 8px 0;
+            font-size: 14px;
+            color: #606266;
+        }
+        .score-positive {
+            color: #67c23a;
+            font-weight: 600;
+        }
+        .score-negative {
+            color: #f56c6c;
+            font-weight: 600;
+        }
+        .difficulty-selection {
+            margin: 24px 0;
+        }
+        .difficulty-selection h3 {
+            font-size: 16px;
+            color: #303133;
+            margin-bottom: 16px;
+        }
+        .difficulty-options {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+        .difficulty-card {
+            padding: 20px;
+            text-align: center;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+            background: #f5f7fa;
+        }
+        .difficulty-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        .difficulty-card.active {
+            border-color: #409EFF;
+            background: linear-gradient(135deg, #ecf5ff 0%, #d9ecff 100%);
+        }
+        .difficulty-icon {
+            font-size: 32px;
+            margin-bottom: 8px;
+        }
+        .difficulty-name {
+            font-size: 16px;
+            font-weight: 600;
+            color: #303133;
+            margin-bottom: 4px;
+        }
+        .difficulty-info {
+            font-size: 12px;
+            color: #909399;
+        }
+        .start-btn {
+            width: 100%;
+            height: 48px;
+            font-size: 16px;
+            font-weight: 600;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #409EFF 0%, #66b1ff 100%);
+            border: none;
+            transition: all 0.3s;
+        }
+        .start-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(64, 158, 255, 0.4);
+        }
+        /* 用户统计卡片 */
+        .stats-card {
+            animation: fadeIn 0.5s ease-out 0.2s backwards;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+        }
+        .stat-item {
+            text-align: center;
+            padding: 16px;
+            background: linear-gradient(135deg, #f5f7fa 0%, #fafafa 100%);
+            border-radius: 8px;
+        }
+        .stat-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: #409EFF;
+            margin-bottom: 4px;
+        }
+        .stat-label {
+            font-size: 12px;
+            color: #909399;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        /* 游戏进行中界面 */
+        .game-playing-screen {
+            animation: fadeIn 0.5s ease-out;
+        }
+        .game-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 20px;
+            background: linear-gradient(135deg, #409EFF 0%, #66b1ff 100%);
+            border-radius: 12px;
+            margin-bottom: 20px;
+            color: #fff;
+            box-shadow: 0 4px 12px rgba(64, 158, 255, 0.3);
+        }
+        .game-info {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+        }
+        .info-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 16px;
+            font-weight: 500;
+        }
+        .game-actions {
+            display: flex;
+            gap: 12px;
+        }
+        .hint-alert {
+            margin-bottom: 20px;
+        }
+        /* 简历展示区域 */
+        .resume-container {
+            margin-bottom: 20px;
+        }
+        .resume-card {
+            min-height: 600px;
+        }
+        .resume-content {
+            padding: 20px;
+        }
+        .resume-section {
+            margin-bottom: 32px;
+        }
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #303133;
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #409EFF;
+        }
+        /* 个人信息 */
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+        }
+        .info-item {
+            padding: 12px;
+            background: #f5f7fa;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .info-item:hover {
+            background: #ecf5ff;
+            transform: scale(1.02);
+        }
+        .info-item label {
+            font-weight: 500;
+            color: #606266;
+            margin-right: 8px;
+        }
+        /* 教育经历 */
+        .education-item {
+            padding: 16px;
+            background: #f5f7fa;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .education-item:hover {
+            background: #ecf5ff;
+            transform: translateX(4px);
+        }
+        .education-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+        .school {
+            font-size: 16px;
+            font-weight: 600;
+            color: #303133;
+        }
+        .time {
+            font-size: 14px;
+            color: #909399;
+        }
+        .education-info {
+            display: flex;
+            gap: 16px;
+        }
+        .major {
+            font-size: 14px;
+            color: #606266;
+        }
+        .degree {
+            font-size: 14px;
+            color: #909399;
+        }
+        /* 工作经历 */
+        .experience-item {
+            padding: 16px;
+            background: #f5f7fa;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .experience-item:hover {
+            background: #ecf5ff;
+            transform: translateX(4px);
+        }
+        .experience-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+        .company {
+            font-size: 16px;
+            font-weight: 600;
+            color: #303133;
+        }
+        .position {
+            font-size: 14px;
+            color: #409EFF;
+            margin-bottom: 8px;
+        }
+        .description {
+            font-size: 14px;
+            color: #606266;
+            line-height: 1.6;
+            padding: 8px;
+            background: #fafafa;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .description:hover {
+            background: #ecf5ff;
+        }
+        /* 技能 */
+        .skills-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            padding: 16px;
+            background: #f5f7fa;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .skills-list:hover {
+            background: #ecf5ff;
+        }
+        /* 错误高亮 */
+        .error-highlight {
+            animation: errorPulse 0.5s ease-out;
+            background: linear-gradient(135deg, #ffeb3b 0%, #ffc107 100%) !important;
+            border: 2px solid #ff9800 !important;
+            border-radius: 4px;
+        }
+        @keyframes errorPulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        /* 游戏完成界面 */
+        .game-completed-screen {
+            animation: fadeIn 0.5s ease-out;
+        }
+        .result-card {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .result-content {
+            text-align: center;
+        }
+        .score-display {
+            margin: 32px 0;
+        }
+        .score-value {
+            font-size: 72px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #409EFF 0%, #66b1ff 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .score-label {
+            font-size: 18px;
+            color: #909399;
+            margin-top: 8px;
+        }
+        .result-stats {
+            margin: 24px 0;
+            padding: 20px;
+            background: #f5f7fa;
+            border-radius: 8px;
+        }
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            font-size: 16px;
+        }
+        .stat-label {
+            color: #606266;
+        }
+        .stat-value {
+            font-weight: 600;
+            color: #303133;
+        }
+        .stat-value.error {
+            color: #f56c6c;
+        }
+        .result-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            margin-top: 32px;
+        }
+        .result-actions .el-button {
+            min-width: 160px;
+            height: 48px;
+            font-size: 16px;
+            font-weight: 600;
+            border-radius: 8px;
+        }
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .game-start-screen {
+                grid-template-columns: 1fr;
+            }
+            .difficulty-options {
+                grid-template-columns: 1fr;
+            }
+            .game-header {
+                flex-direction: column;
+                gap: 16px;
+            }
+            .game-info {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+            .info-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div class="resume-finder-game">
+            <!-- 游戏开始界面 -->
+            <div v-if="gameStatus === 'not-started'" class="game-start-screen">
+                <el-card class="welcome-card">
+                    <template #header>
+                        <div class="card-header">
+                            <span>🎮 简历找茬挑战</span>
+                        </div>
+                    </template>
+                    
+                    <div class="game-description">
+                        <p>在简历中找出错误，学习简历优化技巧！</p>
+                        <ul>
+                            <li>🔍 找到错误：<span class="score-positive">+10分</span></li>
+                            <li>❌ 点错位置：<span class="score-negative">-5分</span></li>
+                            <li>💡 使用提示：<span class="score-negative">-3分</span></li>
+                        </ul>
+                    </div>
+
+                    <div class="difficulty-selection">
+                        <h3>选择难度</h3>
+                        <div class="difficulty-options">
+                            <div
+                                class="difficulty-card easy"
+                                :class="{ active: selectedDifficulty === 'easy' }"
+                                @click="selectDifficulty('easy')"
+                            >
+                                <div class="difficulty-icon">🌱</div>
+                                <div class="difficulty-name">简单</div>
+                                <div class="difficulty-info">3-5个错误 | 3分钟</div>
+                            </div>
+                            <div
+                                class="difficulty-card medium"
+                                :class="{ active: selectedDifficulty === 'medium' }"
+                                @click="selectDifficulty('medium')"
+                            >
+                                <div class="difficulty-icon">🌿</div>
+                                <div class="difficulty-name">中等</div>
+                                <div class="difficulty-info">5-8个错误 | 5分钟</div>
+                            </div>
+                            <div
+                                class="difficulty-card hard"
+                                :class="{ active: selectedDifficulty === 'hard' }"
+                                @click="selectDifficulty('hard')"
+                            >
+                                <div class="difficulty-icon">🌳</div>
+                                <div class="difficulty-name">困难</div>
+                                <div class="difficulty-info">8-12个错误 | 8分钟</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <el-button
+                        type="primary"
+                        size="large"
+                        class="start-btn"
+                        @click="startGame"
+                        :loading="loading"
+                    >
+                        开始挑战
+                    </el-button>
+                </el-card>
+
+                <!-- 用户统计 -->
+                <el-card class="stats-card">
+                    <template #header>
+                        <div class="card-header">
+                            <span>📊 我的战绩</span>
+                        </div>
+                    </template>
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <div class="stat-value">{{ userStats.total_games }}</div>
+                            <div class="stat-label">总场次</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">{{ userStats.total_found }}</div>
+                            <div class="stat-label">找到错误</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">{{ userStats.total_score }}</div>
+                            <div class="stat-label">总积分</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">{{ (userStats.win_rate * 100).toFixed(0) }}%</div>
+                            <div class="stat-label">胜率</div>
+                        </div>
+                    </div>
+                </el-card>
+            </div>
+
+            <!-- 游戏进行中界面 -->
+            <div v-else-if="gameStatus === 'playing'" class="game-playing-screen">
+                <!-- 游戏顶部信息栏 -->
+                <div class="game-header">
+                    <div class="game-info">
+                        <div class="info-item">
+                            <span>⏱️</span>
+                            <span>{{ formatTime(timeRemaining) }}</span>
+                        </div>
+                        <div class="info-item">
+                            <span>🏆</span>
+                            <span>{{ currentScore }}分</span>
+                        </div>
+                        <div class="info-item">
+                            <span>✅</span>
+                            <span>{{ foundErrorsCount }}/{{ totalErrors }}</span>
+                        </div>
+                        <div class="info-item">
+                            <span>💡</span>
+                            <span>{{ remainingHints }}次提示</span>
+                        </div>
+                    </div>
+                    <div class="game-actions">
+                        <el-button
+                            type="warning"
+                            @click="getHint"
+                            :disabled="remainingHints <= 0"
+                        >
+                            提示 (-3分)
+                        </el-button>
+                        <el-button
+                            type="danger"
+                            @click="abandonGame"
+                        >
+                            放弃
+                        </el-button>
+                    </div>
+                </div>
+
+                <!-- 提示信息 -->
+                <el-alert
+                    v-if="hintMessage"
+                    :title="hintMessage"
+                    type="info"
+                    :closable="true"
+                    @close="hintMessage = ''"
+                    class="hint-alert"
+                />
+
+                <!-- 简历展示区域 -->
+                <div class="resume-container">
+                    <el-card class="resume-card">
+                        <div class="resume-content" @click="handleResumeClick">
+                            <!-- 个人信息 -->
+                            <div class="resume-section personal-info">
+                                <h3 class="section-title">个人信息</h3>
+                                <div class="info-grid">
+                                    <div class="info-item" data-location="personal_info.name">
+                                        <label>姓名：</label>
+                                        <span>{{ resumeData.personal_info?.name }}</span>
+                                    </div>
+                                    <div class="info-item" data-location="personal_info.phone">
+                                        <label>电话：</label>
+                                        <span>{{ resumeData.personal_info?.phone }}</span>
+                                    </div>
+                                    <div class="info-item" data-location="personal_info.email">
+                                        <label>邮箱：</label>
+                                        <span>{{ resumeData.personal_info?.email }}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 教育经历 -->
+                            <div class="resume-section education">
+                                <h3 class="section-title">教育经历</h3>
+                                <div
+                                    v-for="(edu, index) in resumeData.education"
+                                    :key="index"
+                                    class="education-item"
+                                    :data-location="`education[${index}]`"
+                                >
+                                    <div class="education-header">
+                                        <span class="school">{{ edu.school }}</span>
+                                        <span class="time">{{ edu.time }}</span>
+                                    </div>
+                                    <div class="education-info">
+                                        <span class="major">{{ edu.major }}</span>
+                                        <span class="degree">{{ edu.degree }}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 工作经历 -->
+                            <div class="resume-section experience">
+                                <h3 class="section-title">工作经历</h3>
+                                <div
+                                    v-for="(exp, index) in resumeData.experience"
+                                    :key="index"
+                                    class="experience-item"
+                                    :data-location="`experience[${index}]`"
+                                >
+                                    <div class="experience-header">
+                                        <span class="company">{{ exp.company }}</span>
+                                        <span class="time">{{ exp.time }}</span>
+                                    </div>
+                                    <div class="position">{{ exp.position }}</div>
+                                    <div
+                                        class="description"
+                                        :data-location="`experience[${index}].description`"
+                                    >
+                                        {{ exp.description }}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 技能 -->
+                            <div class="resume-section skills">
+                                <h3 class="section-title">专业技能</h3>
+                                <div class="skills-list" data-location="skills">
+                                    <el-tag
+                                        v-for="(skill, index) in resumeData.skills"
+                                        :key="index"
+                                        :data-location="`skills[${index}]`"
+                                    >
+                                        {{ skill }}
+                                    </el-tag>
+                                </div>
+                            </div>
+                        </div>
+                    </el-card>
+                </div>
+            </div>
+
+            <!-- 游戏完成界面 -->
+            <div v-else-if="gameStatus === 'completed'" class="game-completed-screen">
+                <el-card class="result-card">
+                    <template #header>
+                        <div class="card-header">
+                            <span>🎉 游戏完成</span>
+                        </div>
+                    </template>
+
+                    <div class="result-content">
+                        <div class="score-display">
+                            <div class="score-value">{{ finalScore }}</div>
+                            <div class="score-label">最终得分</div>
+                        </div>
+
+                        <div class="result-stats">
+                            <div class="stat-row">
+                                <span class="stat-label">找到错误：</span>
+                                <span class="stat-value">{{ foundErrorsList.length }}个</span>
+                            </div>
+                            <div class="stat-row">
+                                <span class="stat-label">遗漏错误：</span>
+                                <span class="stat-value error">{{ missedErrorsList.length }}个</span>
+                            </div>
+                            <div class="stat-row">
+                                <span class="stat-label">用时：</span>
+                                <span class="stat-value">{{ formatTime(timeUsed) }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="result-actions">
+                        <el-button type="primary" size="large" @click="restartGame">
+                            再来一局
+                        </el-button>
+                        <el-button size="large" @click="viewLeaderboard">
+                            查看排行榜
+                        </el-button>
+                    </div>
+                </el-card>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref } = Vue;
+        const { ElMessage } = ElementPlus;
+
+        const app = createApp({
+            setup() {
+                // 游戏状态
+                const gameStatus = ref('not-started');
+                const loading = ref(false);
+                const selectedDifficulty = ref('medium');
+
+                // 游戏数据
+                const timeRemaining = ref(300);
+                const currentScore = ref(0);
+                const foundErrorsCount = ref(0);
+                const remainingHints = ref(3);
+                const totalErrors = ref(5);
+                const hintMessage = ref('');
+
+                // 用户统计
+                const userStats = ref({
+                    total_games: 12,
+                    total_found: 45,
+                    total_score: 380,
+                    win_rate: 0.75
+                });
+
+                // 简历数据
+                const resumeData = ref({
+                    personal_info: {
+                        name: '张三',
+                        phone: '138-0013-8000',
+                        email: 'zhangsan@example.com'
+                    },
+                    education: [
+                        {
+                            school: '北京大学',
+                            time: '2018-2022',
+                            major: '计算机科学与技术',
+                            degree: '本科'
+                        }
+                    ],
+                    experience: [
+                        {
+                            company: '腾讯科技',
+                            time: '2022-2024',
+                            position: '前端开发工程师',
+                            description: '负责公司核心产品的前端开发工作，使用Vue.js和React技术栈。'
+                        }
+                    ],
+                    skills: ['JavaScript', 'Vue.js', 'React', 'TypeScript', 'Node.js', 'Python']
+                });
+
+                // 游戏结果
+                const finalScore = ref(0);
+                const foundErrorsList = ref([]);
+                const missedErrorsList = ref([]);
+                const timeUsed = ref(0);
+
+                // 计时器
+                let timerInterval = null;
+
+                const selectDifficulty = (difficulty) => {
+                    selectedDifficulty.value = difficulty;
+                };
+
+                const startGame = () => {
+                    loading.value = true;
+                    setTimeout(() => {
+                        gameStatus.value = 'playing';
+                        timeRemaining.value = 300;
+                        currentScore.value = 0;
+                        foundErrorsCount.value = 0;
+                        remainingHints.value = 3;
+                        loading.value = false;
+                        startTimer();
+                    }, 1000);
+                };
+
+                const startTimer = () => {
+                    timerInterval = setInterval(() => {
+                        timeRemaining.value--;
+                        if (timeRemaining.value <= 0) {
+                            clearInterval(timerInterval);
+                            completeGame();
+                        }
+                    }, 1000);
+                };
+
+                const handleResumeClick = (event) => {
+                    const target = event.target;
+                    const location = target.dataset.location;
+                    
+                    if (!location) return;
+                    
+                    // 模拟点击效果
+                    if (Math.random() > 0.3) {
+                        currentScore.value += 10;
+                        foundErrorsCount.value += 1;
+                        ElMessage.success('找到错误！+10分');
+                        target.classList.add('error-highlight');
+                        
+                        if (foundErrorsCount.value >= totalErrors.value) {
+                            setTimeout(() => completeGame(), 1000);
+                        }
+                    } else {
+                        currentScore.value = Math.max(0, currentScore.value - 5);
+                        ElMessage.error('这里没有错误，-5分');
+                    }
+                };
+
+                const getHint = () => {
+                    if (remainingHints.value > 0) {
+                        remainingHints.value--;
+                        currentScore.value = Math.max(0, currentScore.value - 3);
+                        hintMessage.value = '提示：检查个人信息中的电话号码格式是否正确';
+                    }
+                };
+
+                const abandonGame = () => {
+                    clearInterval(timerInterval);
+                    gameStatus.value = 'not-started';
+                    ElMessage.info('游戏已放弃');
+                };
+
+                const completeGame = () => {
+                    clearInterval(timerInterval);
+                    finalScore.value = currentScore.value;
+                    foundErrorsList.value = [
+                        { type: 'format_inconsistency', location: 'personal_info.phone', hint: '电话号码格式不统一' },
+                        { type: 'vague_description', location: 'experience[0].description', hint: '工作描述过于空洞' }
+                    ];
+                    missedErrorsList.value = [
+                        { type: 'missing_quantification', location: 'experience[0].description', hint: '缺少量化成果' }
+                    ];
+                    timeUsed.value = 300 - timeRemaining.value;
+                    gameStatus.value = 'completed';
+                };
+
+                const restartGame = () => {
+                    gameStatus.value = 'not-started';
+                    selectedDifficulty.value = 'medium';
+                };
+
+                const viewLeaderboard = () => {
+                    ElMessage.info('排行榜功能开发中...');
+                };
+
+                const formatTime = (seconds) => {
+                    const mins = Math.floor(seconds / 60);
+                    const secs = seconds % 60;
+                    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+                };
+
+                return {
+                    gameStatus,
+                    loading,
+                    selectedDifficulty,
+                    timeRemaining,
+                    currentScore,
+                    foundErrorsCount,
+                    remainingHints,
+                    totalErrors,
+                    hintMessage,
+                    userStats,
+                    resumeData,
+                    finalScore,
+                    foundErrorsList,
+                    missedErrorsList,
+                    timeUsed,
+                    selectDifficulty,
+                    startGame,
+                    handleResumeClick,
+                    getHint,
+                    abandonGame,
+                    completeGame,
+                    restartGame,
+                    viewLeaderboard,
+                    formatTime
+                };
+            }
+        });
+
+        app.use(ElementPlus);
+        app.mount('#app');
+    </script>
+</body>
+</html>

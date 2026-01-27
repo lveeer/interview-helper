@@ -86,6 +86,12 @@ const routes = [
         name: 'RecallTest',
         component: () => import('@/views/RecallTest.vue'),
         meta: { title: '召回测试' }
+      },
+      {
+        path: '/resume-finder-game',
+        name: 'ResumeFinderGame',
+        component: () => import('@/views/ResumeFinderGame.vue'),
+        meta: { title: '简历找茬游戏' }
       }
     ]
   }

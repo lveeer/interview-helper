@@ -31,6 +31,23 @@ from app.schemas.evaluation import (
     EvaluationScore,
     InterviewReport
 )
+from app.schemas.game import (
+    Difficulty,
+    GameStatus,
+    Period,
+    GameStartRequest,
+    GameStartResponse,
+    AnswerSubmitRequest,
+    AnswerSubmitResponse,
+    HintRequest,
+    HintResponse,
+    GameCompleteRequest,
+    GameCompleteResponse,
+    UserStatsResponse,
+    LeaderboardResponse,
+    AchievementsResponse,
+    ErrorTypesResponse
+)
 
 __all__ = [
     "UserBase",
@@ -53,5 +70,20 @@ __all__ = [
     "KnowledgeDocumentResponse",
     "KnowledgeQuery",
     "EvaluationScore",
-    "InterviewReport"
+    "InterviewReport",
+    "Difficulty",
+    "GameStatus",
+    "Period",
+    "GameStartRequest",
+    "GameStartResponse",
+    "AnswerSubmitRequest",
+    "AnswerSubmitResponse",
+    "HintRequest",
+    "HintResponse",
+    "GameCompleteRequest",
+    "GameCompleteResponse",
+    "UserStatsResponse",
+    "LeaderboardResponse",
+    "AchievementsResponse",
+    "ErrorTypesResponse"
 ]

@@ -2,6 +2,12 @@ from app.models.user import User
 from app.models.resume import Resume
 from app.models.interview import Interview, InterviewStatus
 from app.models.knowledge import KnowledgeDocument, VectorChunk
+from app.models.game import (
+    ResumeFinderSession,
+    UserPoints,
+    UserAchievement,
+    LeaderboardSnapshot
+)
 
 __all__ = [
     "User",
@@ -9,5 +15,9 @@ __all__ = [
     "Interview",
     "InterviewStatus",
     "KnowledgeDocument",
-    "VectorChunk"
+    "VectorChunk",
+    "ResumeFinderSession",
+    "UserPoints",
+    "UserAchievement",
+    "LeaderboardSnapshot"
 ]

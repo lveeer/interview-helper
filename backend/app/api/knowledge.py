@@ -17,6 +17,7 @@ from app.schemas.knowledge import (
     RecallTestResultResponse,
     RecallTestSummaryResponse
 )
+from app.schemas.common import ApiResponse
 from app.api.auth import get_current_user
 import os
 from config import settings
@@ -551,7 +552,6 @@ async def get_recall_test_summary(
 ):
     """获取召回测试汇总统计"""
     from app.services.recall_test_service import RecallTestService
-    from app.schemas.common import ApiResponse
 
     summary = RecallTestService.get_test_summary(current_user.id, test_case_id, db)
 

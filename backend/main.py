@@ -14,7 +14,7 @@ logging.basicConfig(
     ]
 )
 
-from app.api import auth, resume, job, interview, knowledge, evaluation, statistics, task_notification, llm_config
+from app.api import auth, resume, job, interview, knowledge, evaluation, statistics, task_notification, llm_config, game
 
 
 @asynccontextmanager
@@ -55,6 +55,7 @@ app.include_router(evaluation.router, prefix="/api/evaluation", tags=["评估反
 app.include_router(statistics.router, prefix="/api/statistics", tags=["统计数据"])
 app.include_router(task_notification.router, prefix="/api/task", tags=["任务通知"])
 app.include_router(llm_config.router)
+app.include_router(game.router, prefix="/api")
 
 
 @app.get("/")

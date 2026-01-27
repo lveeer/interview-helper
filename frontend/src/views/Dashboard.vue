@@ -91,6 +91,10 @@
               <el-icon class="ios-btn-icon"><Setting /></el-icon>
               <span class="ios-btn-label">LLM 配置</span>
             </div>
+            <div class="ios-action-btn mac-yellow" @click="goToResumeFinderGame">
+              <el-icon class="ios-btn-icon"><Monitor /></el-icon>
+              <span class="ios-btn-label">简历找茬</span>
+            </div>
           </div>
         </el-card>
       </el-col>
@@ -136,6 +140,16 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import {
+  Document,
+  ChatDotRound,
+  Reading,
+  TrendCharts,
+  Upload,
+  MagicStick,
+  Setting,
+  Monitor
+} from '@element-plus/icons-vue'
 import { getDashboardStatistics } from '@/api/statistics'
 
 const router = useRouter()
@@ -168,6 +182,7 @@ const goToInterview = () => router.push('/interview')
 const goToJobMatch = () => router.push('/job-match')
 const goToKnowledge = () => router.push('/knowledge')
 const goToLLMConfig = () => router.push('/llm-config')
+const goToResumeFinderGame = () => router.push('/resume-finder-game')
 
 const formatDate = (dateString) => {
   if (!dateString) return ''
@@ -370,7 +385,7 @@ onMounted(() => {
 /* 快速操作区域 - 苹果大卡片式设计 */
 .quick-actions {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 16px;
   padding: 16px 0;
 }
@@ -516,6 +531,21 @@ onMounted(() => {
 .mac-gray:hover {
   background: linear-gradient(135deg, #4D4BBE 0%, #2E2C8F 100%);
   box-shadow: 0 6px 24px rgba(88, 86, 214, 0.35);
+}
+
+/* 简历找茬 - iOS 13+ Yellow */
+.mac-yellow {
+  background: linear-gradient(135deg, #FFCC00 0%, #FF9500 100%);
+  box-shadow: 0 4px 16px rgba(255, 204, 0, 0.25);
+}
+
+.mac-yellow .ios-btn-icon {
+  color: #FFFFFF;
+}
+
+.mac-yellow:hover {
+  background: linear-gradient(135deg, #E6B800 0%, #E68600 100%);
+  box-shadow: 0 6px 24px rgba(255, 204, 0, 0.35);
 }
 
 /* 最近面试区域 */
