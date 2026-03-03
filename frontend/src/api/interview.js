@@ -26,6 +26,14 @@ export const getInterviewDetail = (id) => {
   })
 }
 
+// 获取面试状态（用于轮询问题生成状态）
+export const getInterviewStatus = (id) => {
+  return request({
+    url: `/interview/${id}/status`,
+    method: 'get'
+  })
+}
+
 // 获取面试对话记录
 export const getInterviewRecord = (id) => {
   return request({

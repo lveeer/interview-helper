@@ -503,11 +503,231 @@ Authorization: Bearer <access_token>
 
 ---
 
-## 3. 岗位匹配模块 (`/api/job`)
+## 3. 岗位管理模块 (`/api/jobs`)
 
-### 3.1 岗位匹配分析
+### 3.1 创建岗位
 
-**接口:** `POST /api/job/match`
+**接口:** `POST /api/jobs`
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**请求体:**
+```json
+{
+  "title": "前端开发工程师",
+  "company": "某某公司",
+  "job_description": "岗位职责：..."
+}
+```
+
+**响应:**
+```json
+{
+  "code": 201,
+  "message": "岗位创建成功",
+  "data": {
+    "id": 1,
+    "user_id": 1,
+    "title": "前端开发工程师",
+    "company": "某某公司",
+    "job_description": "岗位职责：...",
+    "created_at": "2026-03-03T10:00:00Z",
+    "updated_at": null
+  }
+}
+```
+
+### 3.2 获取岗位列表
+
+**接口:** `GET /api/jobs`
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**响应:**
+```json
+{
+  "code": 200,
+  "message": "获取成功",
+  "data": [
+    {
+      "id": 1,
+      "title": "前端开发工程师",
+      "company": "某某公司",
+      "created_at": "2026-03-03T10:00:00Z"
+    }
+  ],
+  "total": 1
+}
+```
+
+### 3.3 获取岗位详情
+
+**接口:** `GET /api/jobs/{job_id}`
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**路径参数:**
+- `job_id`: 岗位 ID
+
+**响应:**
+```json
+{
+  "code": 200,
+  "message": "获取成功",
+  "data": {
+    "id": 1,
+    "user_id": 1,
+    "title": "前端开发工程师",
+    "company": "某某公司",
+    "job_description": "岗位职责：...",
+    "created_at": "2026-03-03T10:00:00Z",
+    "updated_at": null
+  }
+}
+```
+
+### 3.4 更新岗位
+
+**接口:** `PUT /api/jobs/{job_id}`
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**路径参数:**
+- `job_id`: 岗位 ID
+
+**请求体:**
+```json
+{
+  "title": "高级前端开发工程师",
+  "company": "新公司",
+  "job_description": "更新后的JD..."
+}
+```
+
+**响应:**
+```json
+{
+  "code": 200,
+  "message": "更新成功",
+  "data": {
+    "id": 1,
+    "user_id": 1,
+    "title": "高级前端开发工程师",
+    "company": "新公司",
+    "job_description": "更新后的JD...",
+    "created_at": "2026-03-03T10:00:00Z",
+    "updated_at": "2026-03-03T11:00:00Z"
+  }
+}
+```
+
+### 3.5 删除岗位
+
+**接口:** `DELETE /api/jobs/{job_id}`
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**路径参数:**
+- `job_id`: 岗位 ID
+
+**响应:**
+```json
+{
+  "code": 200,
+  "message": "删除成功"
+}
+```
+
+### 3.6 针对岗位创建面试
+
+**接口:** `POST /api/jobs/{job_id}/interviews`
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**路径参数:**
+- `job_id`: 岗位 ID
+
+**请求体:**
+```json
+{
+  "resume_id": 1,
+  "knowledge_doc_ids": [1, 2]
+}
+```
+
+**说明:** job_description 从岗位自动获取
+
+**响应:**
+```json
+{
+  "code": 201,
+  "message": "面试创建成功，正在生成面试问题",
+  "data": {
+    "id": 1,
+    "user_id": 1,
+    "resume_id": 1,
+    "job_id": 1,
+    "job_description": "岗位职责：...",
+    "status": "initializing",
+    "total_score": 0,
+    "questions": [],
+    "conversation": [],
+    "created_at": "2026-03-03T10:00:00Z"
+  }
+}
+```
+
+### 3.7 获取岗位面试历史
+
+**接口:** `GET /api/jobs/{job_id}/interviews`
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**路径参数:**
+- `job_id`: 岗位 ID
+
+**响应:**
+```json
+{
+  "code": 200,
+  "message": "获取成功",
+  "data": [
+    {
+      "id": 1,
+      "resume_id": 1,
+      "status": "completed",
+      "total_score": 85,
+      "created_at": "2026-03-03T10:00:00Z"
+    }
+  ],
+  "total": 1
+}
+```
+
+### 3.8 岗位匹配分析
+
+**接口:** `POST /api/jobs/match`
 
 **Headers:**
 ```
@@ -529,9 +749,12 @@ Authorization: Bearer <access_token>
   "message": "匹配分析完成",
   "data": {
     "match_score": 85,
-    "matched_skills": [ ... ],
-    "missing_skills": [ ... ],
-    "suggestions": [ ... ]
+    "keyword_match": 80,
+    "skill_match": 90,
+    "project_relevance": 85,
+    "suggestions": ["建议1", "建议2"],
+    "missing_skills": ["技能1", "技能2"],
+    "strengths": ["优势1", "优势2"]
   }
 }
 ```
@@ -554,9 +777,16 @@ Authorization: Bearer <access_token>
 {
   "resume_id": 1,
   "job_description": "职位描述",
+  "job_id": 1,
   "knowledge_doc_ids": [1, 2, 3]
 }
 ```
+
+**字段说明:**
+- `resume_id`: 简历 ID（必填）
+- `job_description`: 职位描述（可选，优先使用 job_id）
+- `job_id`: 关联岗位 ID（可选，若提供则自动使用岗位的 JD）
+- `knowledge_doc_ids`: 关联的知识库文档 ID 列表（可选）
 
 **响应:**
 ```json
@@ -567,12 +797,13 @@ Authorization: Bearer <access_token>
     "id": 1,
     "user_id": 1,
     "resume_id": 1,
+    "job_id": 1,
     "job_description": "职位描述",
     "status": "initializing",
-    "total_score": null,
+    "total_score": 0,
     "questions": [],
     "conversation": [],
-    "created_at": "2025-01-20T10:00:00Z"
+    "created_at": "2026-03-03T10:00:00Z"
   }
 }
 ```
@@ -598,9 +829,10 @@ Authorization: Bearer <access_token>
     "id": 1,
     "user_id": 1,
     "resume_id": 1,
+    "job_id": 1,
     "job_description": "职位描述",
     "status": "pending",
-    "total_score": null,
+    "total_score": 0,
     "questions": [
       {
         "id": 1,
@@ -610,7 +842,7 @@ Authorization: Bearer <access_token>
       }
     ],
     "conversation": [],
-    "created_at": "2025-01-20T10:00:00Z"
+    "created_at": "2026-03-03T10:00:00Z"
   }
 }
 ```
@@ -660,10 +892,11 @@ Authorization: Bearer <access_token>
   "data": [
     {
       "id": 1,
+      "job_id": 1,
       "job_description": "职位描述",
       "status": "completed",
       "total_score": 85,
-      "created_at": "2025-01-20T10:00:00Z"
+      "created_at": "2026-03-03T10:00:00Z"
     }
   ],
   "total": 1
@@ -691,6 +924,7 @@ Authorization: Bearer <access_token>
     "id": 1,
     "user_id": 1,
     "resume_id": 1,
+    "job_id": 1,
     "job_description": "职位描述",
     "status": "completed",
     "total_score": 85,
@@ -704,16 +938,16 @@ Authorization: Bearer <access_token>
         "difficulty": "中等",
         "type": null,
         "reason": null,
-        "timestamp": "2025-01-20T10:00:00Z"
+        "timestamp": "2026-03-03T10:00:00Z"
       },
       {
         "role": "candidate",
         "content": "回答内容",
         "question_id": 1,
-        "timestamp": "2025-01-20T10:00:00Z"
+        "timestamp": "2026-03-03T10:00:00Z"
       }
     ],
-    "created_at": "2025-01-20T10:00:00Z"
+    "created_at": "2026-03-03T10:00:00Z"
   }
 }
 ```

@@ -14,7 +14,7 @@ logging.basicConfig(
     ]
 )
 
-from app.api import auth, resume, job, interview, knowledge, evaluation, statistics, task_notification, llm_config, game
+from app.api import auth, resume, job, interview, knowledge, evaluation, statistics, task_notification, llm_config, game, persona
 
 
 @asynccontextmanager
@@ -48,7 +48,7 @@ app.add_middleware(
 # 注册路由
 app.include_router(auth.router, prefix="/api/auth", tags=["认证"])
 app.include_router(resume.router, prefix="/api/resume", tags=["简历管理"])
-app.include_router(job.router, prefix="/api/job", tags=["岗位匹配"])
+app.include_router(job.router, prefix="/api/jobs", tags=["岗位管理"])
 app.include_router(interview.router, prefix="/api/interview", tags=["模拟面试"])
 app.include_router(knowledge.router, prefix="/api/knowledge", tags=["知识库"])
 app.include_router(evaluation.router, prefix="/api/evaluation", tags=["评估反馈"])
@@ -56,6 +56,7 @@ app.include_router(statistics.router, prefix="/api/statistics", tags=["统计数
 app.include_router(task_notification.router, prefix="/api/task", tags=["任务通知"])
 app.include_router(llm_config.router)
 app.include_router(game.router, prefix="/api")
+app.include_router(persona.router, prefix="/api")
 
 
 @app.get("/")

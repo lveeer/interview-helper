@@ -7,6 +7,7 @@ from app.core.database import get_db, get_async_db
 from app.models.user import User
 from app.models.resume import Resume
 from app.models.interview import Interview, InterviewStatus
+from app.models.job import Job
 from app.schemas.interview import InterviewCreate, InterviewResponse, InterviewAnswer
 from app.api.auth import get_current_user
 
@@ -43,6 +44,25 @@ async def create_interview(
         )
     print(f"[创建面试] 简历验证通过")
 
+    # 确定岗位描述（优先使用 job_id）
+    job_id = interview_data.job_id
+    job_description = interview_data.job_description
+    
+    if job_id:
+        # 从岗位表获取 JD
+        result = await db.execute(
+            select(Job).where(
+                Job.id == job_id,
+                Job.user_id == current_user.id
+            )
+        )
+        job = result.scalar_one_or_none()
+        if not job:
+            raise HTTPException(status_code=404, detail="岗位不存在")
+        job_description = job.job_description
+    elif not job_description:
+        raise HTTPException(status_code=400, detail="请提供 job_description 或 job_id")
+
     # 构建简历数据
     try:
         resume_data = {
@@ -67,7 +87,8 @@ async def create_interview(
         db_interview = Interview(
             user_id=current_user.id,
             resume_id=interview_data.resume_id,
-            job_description=interview_data.job_description,
+            job_id=job_id,
+            job_description=job_description,
             status=InterviewStatus.initializing,
             questions=None,
             conversation=json.dumps([])
@@ -128,6 +149,7 @@ async def create_interview(
         "id": db_interview.id,
         "user_id": db_interview.user_id,
         "resume_id": db_interview.resume_id,
+        "job_id": db_interview.job_id,
         "job_description": db_interview.job_description,
         "status": db_interview.status,
         "total_score": db_interview.total_score,
@@ -171,6 +193,7 @@ async def get_interview(
         "id": interview.id,
         "user_id": interview.user_id,
         "resume_id": interview.resume_id,
+        "job_id": interview.job_id,
         "job_description": interview.job_description,
         "status": interview.status,
         "total_score": interview.total_score,
@@ -266,6 +289,7 @@ async def get_interviews(
     for interview in interviews:
         interviews_data.append({
             "id": interview.id,
+            "job_id": interview.job_id,
             "job_description": interview.job_description,
             "status": interview.status,
             "total_score": interview.total_score,
@@ -352,6 +376,7 @@ async def get_interview_record(
         "id": interview.id,
         "user_id": interview.user_id,
         "resume_id": interview.resume_id,
+        "job_id": interview.job_id,
         "job_description": interview.job_description,
         "status": interview.status,
         "total_score": interview.total_score,

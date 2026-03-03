@@ -97,12 +97,35 @@
           </el-select>
         </el-form-item>
 
-        <el-form-item label="岗位描述" required>
+        <el-form-item label="选择岗位">
+          <el-select
+            v-model="createForm.job_id"
+            placeholder="选择已有岗位（可选，与岗位描述二选一）"
+            style="width: 100%"
+            size="large"
+            clearable
+          >
+            <el-option
+              v-for="job in jobList"
+              :key="job.id"
+              :label="job.title"
+              :value="job.id"
+            >
+              <div class="job-option">
+                <span class="job-title">{{ job.title }}</span>
+                <span class="job-company">{{ job.company }}</span>
+              </div>
+            </el-option>
+          </el-select>
+        </el-form-item>
+
+        <el-form-item label="岗位描述">
           <el-input
             v-model="createForm.job_description"
             type="textarea"
             :rows="4"
-            placeholder="请输入目标岗位的职位描述（JD），例如：岗位职责、任职要求等"
+            :placeholder="createForm.job_id ? '已选择岗位，此项可留空' : '请输入目标岗位的职位描述（JD），例如：岗位职责、任职要求等'"
+            :disabled="!!createForm.job_id"
             size="large"
           />
         </el-form-item>
@@ -206,6 +229,7 @@ import { getInterviewList, createInterview } from '@/api/interview'
 import { getResumeList } from '@/api/resume'
 import { getKnowledgeList } from '@/api/knowledge'
 import { getPersonas } from '@/api/persona'
+import { getJobList } from '@/api/job'
 
 const router = useRouter()
 const loading = ref(false)
@@ -218,9 +242,11 @@ const interviewList = ref([])
 const resumeList = ref([])
 const knowledgeList = ref([])
 const personaList = ref([])
+const jobList = ref([])
 
 const createForm = ref({
   resume_id: '',
+  job_id: null,
   job_description: '',
   knowledge_doc_ids: [],
   persona_id: null
@@ -273,14 +299,26 @@ const loadPersonaList = async () => {
   }
 }
 
+const loadJobList = async () => {
+  try {
+    const res = await getJobList()
+    if (res.code === 200) {
+      jobList.value = res.data || []
+    }
+  } catch (error) {
+    console.error('加载岗位列表失败:', error)
+  }
+}
+
 const handleCreate = async () => {
   if (!createForm.value.resume_id) {
     ElMessage.warning('请选择简历')
     return
   }
 
-  if (!createForm.value.job_description.trim()) {
-    ElMessage.warning('请输入岗位描述')
+  // 必须选择岗位或手动输入岗位描述
+  if (!createForm.value.job_id && !createForm.value.job_description.trim()) {
+    ElMessage.warning('请选择岗位或输入岗位描述')
     return
   }
 
@@ -292,6 +330,7 @@ const handleCreate = async () => {
       showCreateDialog.value = false
       createForm.value = {
         resume_id: '',
+        job_id: null,
         job_description: '',
         knowledge_doc_ids: [],
         persona_id: null
@@ -388,6 +427,7 @@ onMounted(() => {
   loadResumeList()
   loadKnowledgeList()
   loadPersonaList()
+  loadJobList()
 })
 </script>
 
@@ -410,6 +450,23 @@ onMounted(() => {
 }
 
 .persona-desc {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.job-option {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.job-title {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.job-company {
   font-size: 12px;
   color: var(--text-secondary);
 }

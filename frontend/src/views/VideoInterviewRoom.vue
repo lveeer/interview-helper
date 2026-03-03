@@ -5,14 +5,23 @@
       <!-- 主视频区域 - AI 面试官 -->
       <div class="main-video-area">
         <div class="ai-interviewer-video">
-          <div class="ai-avatar">
-            <el-icon class="avatar-icon"><User /></el-icon>
+          <!-- Lottie 动画容器 -->
+          <div class="ai-avatar-container" ref="avatarContainer">
+            <div 
+              ref="lottieContainer" 
+              class="lottie-animation"
+              :class="{ 'is-speaking': isSpeaking }"
+            ></div>
+            <!-- 等待状态叠加层 -->
+            <div v-if="!isSpeaking && !isTyping" class="idle-overlay">
+              <div class="idle-pulse"></div>
+            </div>
           </div>
           <div class="ai-name">AI 面试官</div>
-          <div v-if="isTyping" class="speaking-indicator">
-            <span></span>
-            <span></span>
-            <span></span>
+          <div class="ai-status">
+            <span v-if="isSpeaking" class="status-speaking">正在提问</span>
+            <span v-else-if="isTyping" class="status-thinking">思考中...</span>
+            <span v-else class="status-waiting">等待回答</span>
           </div>
         </div>
         
@@ -165,13 +174,14 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, computed, nextTick } from 'vue'
+import { ref, onMounted, onUnmounted, computed, nextTick, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { 
-  User, Microphone, Mute, VideoCamera, VideoCameraFilled, 
+  Microphone, Mute, VideoCamera, VideoCameraFilled, 
   Headset, SwitchButton, ArrowUp, ArrowDown, Loading, Promotion 
 } from '@element-plus/icons-vue'
+import lottie from 'lottie-web'
 import speechService from '@/utils/speech'
 import WebSocketClient from '@/utils/websocket'
 import ConnectionStatus from '@/components/ConnectionStatus.vue'
@@ -188,6 +198,15 @@ const isTyping = ref(false)
 const chatContainer = ref(null)
 let wsClient = null
 const isEnding = ref(false)
+
+// Lottie 动画相关
+const lottieContainer = ref(null)
+const avatarContainer = ref(null)
+let lottieAnimation = null
+const isSpeaking = ref(false)
+
+// 动画 URL
+const SPEAKING_ANIMATION_URL = 'https://assets2.lottiefiles.com/packages/lf20_vatpKHGdo4.json'
 
 // WebSocket 连接状态
 const connectionStatus = ref('disconnected')
@@ -229,6 +248,9 @@ onMounted(async () => {
     elapsedSeconds.value = Math.floor((Date.now() - interviewStartTime.value) / 1000)
   }, 1000)
 
+  // 初始化 Lottie 动画
+  initLottieAnimation()
+
   // 初始化摄像头和麦克风
   await initMediaDevices()
   
@@ -252,9 +274,57 @@ onUnmounted(() => {
     mediaStream.getTracks().forEach(track => track.stop())
   }
   
+  // 清理 Lottie 动画
+  if (lottieAnimation) {
+    lottieAnimation.destroy()
+  }
+  
   // 清理语音资源
   speechService.destroy()
 })
+
+/**
+ * 初始化 Lottie 动画
+ */
+const initLottieAnimation = () => {
+  if (!lottieContainer.value) return
+  
+  lottieAnimation = lottie.loadAnimation({
+    container: lottieContainer.value,
+    renderer: 'svg',
+    loop: true,
+    autoplay: false,
+    path: SPEAKING_ANIMATION_URL
+  })
+  
+  lottieAnimation.addEventListener('DOMLoaded', () => {
+    console.log('Lottie 动画加载完成')
+  })
+  
+  lottieAnimation.addEventListener('error', (error) => {
+    console.error('Lottie 动画加载失败:', error)
+  })
+}
+
+/**
+ * 播放说话动画
+ */
+const playSpeakingAnimation = () => {
+  if (lottieAnimation) {
+    isSpeaking.value = true
+    lottieAnimation.play()
+  }
+}
+
+/**
+ * 停止说话动画
+ */
+const stopSpeakingAnimation = () => {
+  if (lottieAnimation) {
+    isSpeaking.value = false
+    lottieAnimation.stop()
+  }
+}
 
 /**
  * 初始化摄像头和麦克风
@@ -550,17 +620,44 @@ const speakText = (text) => {
     return
   }
 
+  // 先停止之前的语音和动画
+  speechService.stopSpeaking()
+  stopSpeakingAnimation()
+
   try {
-    speechService.speak(text, {
-      lang: 'zh-CN',
-      rate: 1,
-      pitch: 1,
-      volume: 1
-    }).catch(error => {
-      console.error('语音播放失败:', error)
-    })
+    // 使用浏览器原生 SpeechSynthesis 以便更好地控制动画
+    const utterance = new SpeechSynthesisUtterance(text)
+    utterance.lang = 'zh-CN'
+    utterance.rate = 1
+    utterance.pitch = 1
+    utterance.volume = 1
+
+    // 尝试获取中文语音
+    const voices = window.speechSynthesis.getVoices()
+    const chineseVoice = voices.find(voice => voice.lang.includes('zh'))
+    if (chineseVoice) {
+      utterance.voice = chineseVoice
+    }
+
+    utterance.onstart = () => {
+      console.log('开始播放语音')
+      playSpeakingAnimation()
+    }
+
+    utterance.onend = () => {
+      console.log('语音播放完成')
+      stopSpeakingAnimation()
+    }
+
+    utterance.onerror = (event) => {
+      console.error('语音合成错误:', event.error)
+      stopSpeakingAnimation()
+    }
+
+    window.speechSynthesis.speak(utterance)
   } catch (error) {
     console.error('语音播放错误:', error)
+    stopSpeakingAnimation()
   }
 }
 
@@ -608,20 +705,60 @@ const handleReconnect = () => {
   gap: 16px;
 }
 
-.ai-avatar {
-  width: 120px;
-  height: 120px;
+.ai-avatar-container {
+  position: relative;
+  width: 200px;
+  height: 200px;
   border-radius: 50%;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   display: flex;
   align-items: center;
   justify-content: center;
   box-shadow: 0 10px 40px rgba(102, 126, 234, 0.4);
+  overflow: hidden;
 }
 
-.avatar-icon {
-  font-size: 56px;
-  color: white;
+.lottie-animation {
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.lottie-animation.is-speaking {
+  opacity: 1;
+}
+
+/* 等待状态叠加层 */
+.idle-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.idle-pulse {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  animation: pulse 2s infinite ease-in-out;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.4;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 0.8;
+  }
 }
 
 .ai-name {
@@ -630,28 +767,29 @@ const handleReconnect = () => {
   color: rgba(255, 255, 255, 0.9);
 }
 
-.speaking-indicator {
-  display: flex;
-  gap: 6px;
-  padding: 8px 16px;
-  background: rgba(255, 255, 255, 0.1);
+.ai-status {
+  font-size: 14px;
+  padding: 6px 16px;
   border-radius: 20px;
+  background: rgba(255, 255, 255, 0.1);
+  transition: all 0.3s ease;
 }
 
-.speaking-indicator span {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #667eea;
-  animation: speaking 0.6s infinite ease-in-out;
+.status-speaking {
+  color: #4ade80;
 }
 
-.speaking-indicator span:nth-child(2) {
-  animation-delay: 0.1s;
+.status-thinking {
+  color: #fbbf24;
 }
 
-.speaking-indicator span:nth-child(3) {
-  animation-delay: 0.2s;
+.status-waiting {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* 移除旧的 speaking-indicator 样式 */
+.speaking-indicator {
+  display: none;
 }
 
 @keyframes speaking {

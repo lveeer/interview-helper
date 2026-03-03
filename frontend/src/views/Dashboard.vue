@@ -140,6 +140,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { ElMessageBox } from 'element-plus'
 import {
   Document,
   ChatDotRound,
@@ -178,7 +179,27 @@ const loadData = async () => {
 
 const goToResume = () => router.push('/resume')
 const goToResumeOptimize = () => router.push('/resume-optimize')
-const goToInterview = () => router.push('/interview')
+const goToInterview = () => {
+  ElMessageBox.confirm(
+    '请选择面试模式',
+    '开始面试',
+    {
+      confirmButtonText: '数字人面试',
+      cancelButtonText: '对话面试',
+      distinguishCancelAndClose: true,
+      type: 'info',
+      customClass: 'interview-mode-dialog'
+    }
+  ).then(() => {
+    // 数字人面试
+    router.push('/interview')
+  }).catch((action) => {
+    if (action === 'cancel') {
+      // 对话面试
+      router.push('/interview?mode=chat')
+    }
+  })
+}
 const goToJobMatch = () => router.push('/job-match')
 const goToKnowledge = () => router.push('/knowledge')
 const goToLLMConfig = () => router.push('/llm-config')
@@ -794,6 +815,63 @@ onMounted(() => {
 
 .mb-4 {
   margin-bottom: 20px;
+}
+
+/* 面试模式选择弹窗样式 */
+:deep(.interview-mode-dialog) {
+  border-radius: 12px;
+}
+
+:deep(.interview-mode-dialog .el-message-box__header) {
+  padding: 20px 20px 10px;
+}
+
+:deep(.interview-mode-dialog .el-message-box__title) {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+:deep(.interview-mode-dialog .el-message-box__content) {
+  padding: 20px;
+}
+
+:deep(.interview-mode-dialog .el-message-box__message) {
+  font-size: 15px;
+  color: var(--text-primary);
+}
+
+:deep(.interview-mode-dialog .el-message-box__btns) {
+  padding: 10px 20px 20px;
+  display: flex;
+  gap: 12px;
+}
+
+:deep(.interview-mode-dialog .el-button) {
+  flex: 1;
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+:deep(.interview-mode-dialog .el-button--primary) {
+  background: linear-gradient(135deg, #32ADE6 0%, #007AFF 100%);
+  border: none;
+}
+
+:deep(.interview-mode-dialog .el-button--primary:hover) {
+  background: linear-gradient(135deg, #2A96C9 0%, #0066CC 100%);
+}
+
+:deep(.interview-mode-dialog .el-button--default) {
+  background: linear-gradient(135deg, #34C759 0%, #248A3D 100%);
+  border: none;
+  color: white;
+}
+
+:deep(.interview-mode-dialog .el-button--default:hover) {
+  background: linear-gradient(135deg, #2DB54E 0%, #1E6E32 100%);
 }
 
 </style>

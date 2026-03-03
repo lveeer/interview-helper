@@ -6,7 +6,8 @@ from app.models.interview import InterviewStatus
 
 class InterviewCreate(BaseModel):
     resume_id: int
-    job_description: str
+    job_description: Optional[str] = None  # JD（可选，优先使用 job_id）
+    job_id: Optional[int] = None  # 关联岗位ID（可选）
     knowledge_doc_ids: Optional[List[int]] = None  # 可选的知识库文档ID列表
 
 
@@ -29,6 +30,7 @@ class InterviewResponse(BaseModel):
     id: int
     user_id: int
     resume_id: int
+    job_id: Optional[int] = None
     job_description: str
     status: InterviewStatus
     total_score: int
@@ -60,6 +62,7 @@ class InterviewRecordResponse(BaseModel):
     id: int
     user_id: int
     resume_id: int
+    job_id: Optional[int] = None
     job_description: str
     status: InterviewStatus
     total_score: int

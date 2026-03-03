@@ -555,15 +555,11 @@ async def get_recall_test_summary(
 
     summary = RecallTestService.get_test_summary(current_user.id, test_case_id, db)
 
-    return ApiResponse(
-        code=200,
-        message="获取成功",
-        data={
-            "total_tests": summary["total_tests"],
-            "avg_recall": summary["avg_recall"],
-            "avg_precision": summary["avg_precision"],
-            "avg_f1_score": summary["avg_f1_score"],
-            "avg_mrr": summary["avg_mrr"],
-            "results": [RecallTestResultResponse.model_validate(r) for r in summary["results"]]
-        }
+    return RecallTestSummaryResponse(
+        total_tests=summary["total_tests"],
+        avg_recall=summary["avg_recall"],
+        avg_precision=summary["avg_precision"],
+        avg_f1_score=summary["avg_f1_score"],
+        avg_mrr=summary["avg_mrr"],
+        results=[RecallTestResultResponse.model_validate(r) for r in summary["results"]]
     )

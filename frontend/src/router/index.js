@@ -46,6 +46,12 @@ const routes = [
         meta: { title: '岗位匹配' }
       },
       {
+        path: '/jobs',
+        name: 'JobList',
+        component: () => import('@/views/JobList.vue'),
+        meta: { title: '岗位列表' }
+      },
+      {
         path: '/interview',
         name: 'Interview',
         component: () => import('@/views/Interview.vue'),

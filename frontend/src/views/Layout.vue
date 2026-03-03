@@ -69,6 +69,10 @@
           <el-icon><TrendCharts /></el-icon>
           <span>岗位匹配</span>
         </el-menu-item>
+        <el-menu-item index="/jobs">
+          <el-icon><Briefcase /></el-icon>
+          <span>岗位列表</span>
+        </el-menu-item>
         <el-menu-item index="/interview">
           <el-icon><ChatDotRound /></el-icon>
           <span>模拟面试</span>
@@ -242,6 +246,7 @@ import {
   Document,
   MagicStick,
   TrendCharts,
+  Briefcase,
   ChatDotRound,
   Reading,
   Setting,

@@ -18,7 +18,8 @@ class Interview(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     resume_id = Column(Integer, ForeignKey("resumes.id"), nullable=False)
-    job_description = Column(Text)  # JD
+    job_id = Column(Integer, ForeignKey("jobs.id", ondelete="SET NULL"), nullable=True)  # 关联岗位
+    job_description = Column(Text)  # JD（兼容旧数据，新增岗位后优先使用 job_id）
 
     status = Column(Enum(InterviewStatus), default=InterviewStatus.pending)
     total_score = Column(Integer, default=0)
@@ -41,3 +42,4 @@ class Interview(Base):
 
     user = relationship("User", backref="interviews")
     resume = relationship("Resume", back_populates="interviews", passive_deletes='all')
+    job = relationship("Job", back_populates="interviews")

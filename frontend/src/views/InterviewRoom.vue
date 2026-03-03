@@ -13,9 +13,17 @@
             <h1>AI 模拟面试</h1>
           </div>
         </div>
-        <button class="end-button" @click="handleEnd">
-          结束
-        </button>
+        <div class="header-right">
+          <ConnectionStatus
+            :status="connectionStatus"
+            :latency="connectionLatency"
+            :reconnect-attempts="reconnectAttempts"
+            @reconnect="handleReconnect"
+          />
+          <button class="end-button" @click="handleEnd">
+            结束
+          </button>
+        </div>
       </div>
 
       <!-- 聊天区域 -->
@@ -34,6 +42,20 @@
           <div class="message-content">
             <div class="message-role">
               {{ message.role === 'interviewer' ? '面试官' : '你' }}
+            </div>
+            <div v-if="message.role === 'interviewer'" class="message-badges">
+              <QuestionDifficultyBadge
+                v-if="message.difficulty"
+                :difficulty="message.difficulty"
+                size="small"
+              />
+              <FollowupTypeBadge
+                v-if="message.followup_type"
+                :type="message.followup_type"
+                :count="message.followup_count"
+                :max-count="message.max_followup_count"
+                size="small"
+              />
             </div>
             <div class="message-text">{{ message.content }}</div>
           </div>
@@ -117,6 +139,10 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { User, UserFilled, Promotion, Microphone, Headset } from '@element-plus/icons-vue'
 import speechService from '@/utils/speech'
+import WebSocketClient from '@/utils/websocket'
+import ConnectionStatus from '@/components/ConnectionStatus.vue'
+import QuestionDifficultyBadge from '@/components/QuestionDifficultyBadge.vue'
+import FollowupTypeBadge from '@/components/FollowupTypeBadge.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -126,8 +152,13 @@ const messages = ref([])
 const userAnswer = ref('')
 const isTyping = ref(false)
 const chatContainer = ref(null)
-let websocket = null
+let wsClient = null
 const isEnding = ref(false) // 标记是否正在结束面试
+
+// WebSocket 连接状态
+const connectionStatus = ref('disconnected')
+const connectionLatency = ref(0)
+const reconnectAttempts = ref(0)
 
 // 语音相关状态
 const speechSupported = speechService.checkSupport()
@@ -140,8 +171,8 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  if (websocket) {
-    websocket.close()
+  if (wsClient) {
+    wsClient.close()
   }
   // 清理语音资源
   speechService.destroy()
@@ -149,55 +180,79 @@ onUnmounted(() => {
 
 const connectWebSocket = () => {
   const wsUrl = `ws://localhost:8000/api/interview/ws/${interviewId}`
-  websocket = new WebSocket(wsUrl)
 
-  websocket.onopen = () => {
-    console.log('WebSocket 连接成功')
-  }
+  wsClient = new WebSocketClient({
+    url: wsUrl,
+    heartbeatInterval: 30000,
+    reconnectInterval: 1000,
+    maxReconnectAttempts: 5,
+    onOpen: () => {
+      console.log('WebSocket 连接成功')
+    },
+    onMessage: (data) => {
+      console.log('收到 WebSocket 消息:', data)
+      const messageData = JSON.parse(data)
+      console.log('解析后的数据:', messageData)
 
-  websocket.onmessage = (event) => {
-    console.log('收到 WebSocket 消息:', event.data)
-    const data = JSON.parse(event.data)
-    console.log('解析后的数据:', data)
+      if (messageData.type === 'question' || messageData.type === 'followup') {
+        isTyping.value = false
+        const question = messageData.data.question
+        const message = {
+          role: 'interviewer',
+          content: question
+        }
 
-    if (data.type === 'question' || data.type === 'followup') {
-      isTyping.value = false
-      const question = data.data.question
-      messages.value.push({
-        role: 'interviewer',
-        content: question
-      })
-      scrollToBottom()
+        // 添加问题难度和追问类型信息（如果后端返回）
+        if (messageData.data.difficulty) {
+          message.difficulty = messageData.data.difficulty
+        }
+        if (messageData.data.followup_type) {
+          message.followup_type = messageData.data.followup_type
+          message.followup_count = messageData.data.followup_count || 0
+          message.max_followup_count = messageData.data.max_followup_count || 3
+        }
 
-      // 自动播放面试官问题的语音
-      speakText(question)
-    } else if (data.type === 'end') {
-      console.log('收到结束消息，准备跳转')
-      isTyping.value = false
-      ElMessage.success('面试已完成，报告生成中，请稍后在面试列表查看')
-      setTimeout(() => {
-        router.push('/interview')
-      }, 2000)
-    } else {
-      console.log('未处理的消息类型:', data.type)
+        messages.value.push(message)
+        scrollToBottom()
+
+        // 自动播放面试官问题的语音
+        speakText(question)
+      } else if (messageData.type === 'end') {
+        console.log('收到结束消息，准备跳转')
+        isTyping.value = false
+        ElMessage.success('面试已完成，报告生成中，请稍后在面试列表查看')
+        setTimeout(() => {
+          router.push('/interview')
+        }, 2000)
+      } else {
+        console.log('未处理的消息类型:', messageData.type)
+      }
+    },
+    onError: (error) => {
+      console.error('WebSocket 错误:', error)
+      ElMessage.error('连接错误，请刷新页面重试')
+    },
+    onClose: (event) => {
+      console.log('WebSocket 连接关闭')
+      // 如果是用户主动结束面试导致的连接关闭，显示成功消息并跳转
+      if (isEnding.value) {
+        ElMessage.success('面试已完成，报告生成中，请稍后在面试列表查看')
+        setTimeout(() => {
+          router.push('/interview')
+        }, 2000)
+      }
+    },
+    onReconnect: (attempts) => {
+      console.log(`WebSocket 重连尝试 ${attempts}`)
+    },
+    onStatusChange: (status) => {
+      connectionStatus.value = status
+      connectionLatency.value = wsClient.getLatency()
+      reconnectAttempts.value = wsClient.getReconnectAttempts()
     }
-  }
+  })
 
-  websocket.onerror = (error) => {
-    console.error('WebSocket 错误:', error)
-    ElMessage.error('连接错误，请刷新页面重试')
-  }
-
-  websocket.onclose = () => {
-    console.log('WebSocket 连接关闭')
-    // 如果是用户主动结束面试导致的连接关闭，显示成功消息并跳转
-    if (isEnding.value) {
-      ElMessage.success('面试已完成，报告生成中，请稍后在面试列表查看')
-      setTimeout(() => {
-        router.push('/interview')
-      }, 2000)
-    }
-  }
+  wsClient.connect()
 }
 
 const sendAnswer = async () => {
@@ -216,8 +271,8 @@ const sendAnswer = async () => {
 
   isTyping.value = true
 
-  if (websocket && websocket.readyState === WebSocket.OPEN) {
-    websocket.send(JSON.stringify({
+  if (wsClient && wsClient.getStatus() === 'connected') {
+    wsClient.send(JSON.stringify({
       type: 'answer',
       answer: answer,
       answer_type: 'text'
@@ -245,13 +300,13 @@ const handleEnd = async () => {
     ElMessage.info('正在结束面试...')
 
     // 尝试发送结束消息
-    if (websocket && websocket.readyState === WebSocket.OPEN) {
-      websocket.send(JSON.stringify({ type: 'end' }))
+    if (wsClient && wsClient.getStatus() === 'connected') {
+      wsClient.send(JSON.stringify({ type: 'end' }))
     }
 
     // 直接关闭 WebSocket 连接
-    if (websocket) {
-      websocket.close()
+    if (wsClient) {
+      wsClient.close()
     }
 
     // 显示成功消息并跳转
@@ -379,6 +434,15 @@ const speakText = (text) => {
     console.error('语音播放错误:', error)
   }
 }
+
+/**
+ * 手动重连 WebSocket
+ */
+const handleReconnect = () => {
+  if (wsClient) {
+    wsClient.reconnect()
+  }
+}
 </script>
 
 <style scoped>
@@ -416,6 +480,12 @@ const speakText = (text) => {
 }
 
 .header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.header-right {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -577,6 +647,14 @@ const speakText = (text) => {
 
 .message.candidate .message-role {
   text-align: right;
+}
+
+.message-badges {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+  flex-wrap: wrap;
 }
 
 /* ===== 消息气泡 ===== */
