@@ -58,6 +58,12 @@ const routes = [
         meta: { title: '面试房间' }
       },
       {
+        path: '/video-interview/:id',
+        name: 'VideoInterviewRoom',
+        component: () => import('@/views/VideoInterviewRoom.vue'),
+        meta: { title: '视频面试', requiresAuth: true }
+      },
+      {
         path: '/knowledge',
         name: 'Knowledge',
         component: () => import('@/views/Knowledge.vue'),

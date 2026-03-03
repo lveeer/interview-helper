@@ -79,13 +79,14 @@
     </el-card>
 
     <!-- 创建面试对话框 -->
-    <el-dialog v-model="showCreateDialog" title="创建面试" width="600px">
-      <el-form :model="createForm" label-width="100px">
-        <el-form-item label="选择简历">
+    <el-dialog v-model="showCreateDialog" title="创建面试" width="700px" class="create-interview-dialog">
+      <el-form :model="createForm" label-width="90px">
+        <el-form-item label="选择简历" required>
           <el-select
             v-model="createForm.resume_id"
             placeholder="请选择简历"
             style="width: 100%"
+            size="large"
           >
             <el-option
               v-for="resume in resumeList"
@@ -96,12 +97,13 @@
           </el-select>
         </el-form-item>
 
-        <el-form-item label="岗位描述">
+        <el-form-item label="岗位描述" required>
           <el-input
             v-model="createForm.job_description"
             type="textarea"
-            :rows="8"
-            placeholder="请输入目标岗位的职位描述（JD）"
+            :rows="4"
+            placeholder="请输入目标岗位的职位描述（JD），例如：岗位职责、任职要求等"
+            size="large"
           />
         </el-form-item>
 
@@ -113,6 +115,7 @@
             multiple
             collapse-tags
             collapse-tags-tooltip
+            size="large"
           >
             <el-option
               v-for="doc in knowledgeList"
@@ -121,15 +124,73 @@
               :value="doc.id"
             />
           </el-select>
-          <div class="form-tip">
-            可选：选择知识库文档，AI 将基于这些文档进行面试提问
-          </div>
+        </el-form-item>
+
+        <el-form-item label="面试官人设">
+          <el-select
+            v-model="createForm.persona_id"
+            placeholder="选择面试官风格"
+            style="width: 100%"
+            size="large"
+          >
+            <el-option
+              v-for="persona in personaList"
+              :key="persona.id"
+              :label="persona.name"
+              :value="persona.id"
+            >
+              <div class="persona-option">
+                <span class="persona-name">{{ persona.name }}</span>
+                <span class="persona-desc">{{ persona.description }}</span>
+              </div>
+            </el-option>
+          </el-select>
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="showCreateDialog = false">取消</el-button>
-        <el-button type="primary" :loading="creating" @click="handleCreate">
-          创建
+        <el-button size="large" @click="showCreateDialog = false">取消</el-button>
+        <el-button type="primary" size="large" :loading="creating" @click="handleCreate">
+          创建面试
+        </el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 模式选择对话框 -->
+    <el-dialog
+      v-model="showModeDialog"
+      title="选择面试模式"
+      width="500px"
+      class="mode-select-dialog"
+      :close-on-click-modal="false"
+    >
+      <div class="mode-options">
+        <div
+          class="mode-option"
+          :class="{ active: selectedMode === 'normal' }"
+          @click="selectedMode = 'normal'"
+        >
+          <el-icon class="mode-icon"><ChatLineSquare /></el-icon>
+          <div class="mode-info">
+            <h3>常规模式</h3>
+            <p>文字对话形式进行面试，适合日常练习</p>
+          </div>
+        </div>
+        <div
+          class="mode-option"
+          :class="{ active: selectedMode === 'video' }"
+          @click="selectedMode = 'video'"
+        >
+          <el-icon class="mode-icon"><VideoCamera /></el-icon>
+          <div class="mode-info">
+            <h3>视频模式</h3>
+            <p>开启摄像头和麦克风，模拟真实面试场景</p>
+          </div>
+        </div>
+      </div>
+      <template #footer>
+        <el-button size="large" @click="showModeDialog = false">取消</el-button>
+        <el-button type="primary" size="large" @click="confirmStartInterview" :disabled="!selectedMode">
+          开始面试
         </el-button>
       </template>
     </el-dialog>
@@ -140,22 +201,29 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { Plus, VideoCamera, ChatLineSquare } from '@element-plus/icons-vue'
 import { getInterviewList, createInterview } from '@/api/interview'
 import { getResumeList } from '@/api/resume'
 import { getKnowledgeList } from '@/api/knowledge'
+import { getPersonas } from '@/api/persona'
 
 const router = useRouter()
 const loading = ref(false)
 const creating = ref(false)
 const showCreateDialog = ref(false)
+const showModeDialog = ref(false)
+const selectedMode = ref('normal')
+const pendingInterview = ref(null)
 const interviewList = ref([])
 const resumeList = ref([])
 const knowledgeList = ref([])
+const personaList = ref([])
 
 const createForm = ref({
   resume_id: '',
   job_description: '',
-  knowledge_doc_ids: []
+  knowledge_doc_ids: [],
+  persona_id: null
 })
 
 const loadInterviewList = async () => {
@@ -194,6 +262,17 @@ const loadKnowledgeList = async () => {
   }
 }
 
+const loadPersonaList = async () => {
+  try {
+    const res = await getPersonas()
+    if (res.code === 200) {
+      personaList.value = res.data || []
+    }
+  } catch (error) {
+    console.error('加载人设列表失败:', error)
+  }
+}
+
 const handleCreate = async () => {
   if (!createForm.value.resume_id) {
     ElMessage.warning('请选择简历')
@@ -214,7 +293,8 @@ const handleCreate = async () => {
       createForm.value = {
         resume_id: '',
         job_description: '',
-        knowledge_doc_ids: []
+        knowledge_doc_ids: [],
+        persona_id: null
       }
       loadInterviewList()
     }
@@ -226,7 +306,35 @@ const handleCreate = async () => {
 }
 
 const startInterview = (interview) => {
-  router.push(`/interview/${interview.id}`)
+  pendingInterview.value = interview
+  selectedMode.value = 'normal'
+  showModeDialog.value = true
+}
+
+const confirmStartInterview = async () => {
+  if (!selectedMode.value || !pendingInterview.value) return
+  
+  showModeDialog.value = false
+  
+  if (selectedMode.value === 'video') {
+    // 视频模式：尝试请求权限，但不阻止进入
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: true, 
+        audio: true 
+      })
+      // 权限获取成功，关闭流（进入页面后会重新获取）
+      stream.getTracks().forEach(track => track.stop())
+    } catch (error) {
+      console.warn('获取媒体设备权限失败:', error)
+      // 提示但不阻止进入
+      ElMessage.warning('未检测到摄像头或麦克风，视频面试将以黑屏模式进行')
+    }
+    router.push(`/video-interview/${pendingInterview.value.id}`)
+  } else {
+    // 常规模式：直接跳转到普通面试房间
+    router.push(`/interview/${pendingInterview.value.id}`)
+  }
 }
 
 const continueInterview = (interview) => {
@@ -279,6 +387,7 @@ onMounted(() => {
   loadInterviewList()
   loadResumeList()
   loadKnowledgeList()
+  loadPersonaList()
 })
 </script>
 
@@ -289,9 +398,74 @@ onMounted(() => {
   align-items: center;
 }
 
-.form-tip {
-  margin-top: 4px;
+.persona-option {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.persona-name {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.persona-desc {
   font-size: 12px;
   color: var(--text-secondary);
+}
+
+.mode-options {
+  display: flex;
+  gap: 20px;
+  padding: 10px 0;
+}
+
+.mode-option {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 24px 16px;
+  border: 2px solid var(--border-color);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.mode-option:hover {
+  border-color: var(--primary-color);
+  background-color: var(--hover-bg);
+}
+
+.mode-option.active {
+  border-color: var(--primary-color);
+  background-color: var(--primary-light);
+}
+
+.mode-icon {
+  font-size: 48px;
+  color: var(--primary-color);
+  margin-bottom: 16px;
+}
+
+.mode-option.active .mode-icon {
+  color: var(--primary-color);
+}
+
+.mode-info {
+  text-align: center;
+}
+
+.mode-info h3 {
+  margin: 0 0 8px 0;
+  font-size: 18px;
+  color: var(--text-primary);
+}
+
+.mode-info p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.5;
 }
 </style>
