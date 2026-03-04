@@ -63,12 +63,7 @@ const routes = [
         component: () => import('@/views/InterviewRoom.vue'),
         meta: { title: '面试房间' }
       },
-      {
-        path: '/video-interview/:id',
-        name: 'VideoInterviewRoom',
-        component: () => import('@/views/VideoInterviewRoom.vue'),
-        meta: { title: '视频面试', requiresAuth: true }
-      },
+
       {
         path: '/knowledge',
         name: 'Knowledge',
@@ -106,6 +101,13 @@ const routes = [
         meta: { title: '简历找茬游戏' }
       }
     ]
+  },
+  // 全屏视频面试房间（独立布局，实现沉浸式体验）
+  {
+    path: '/video-interview/:id',
+    name: 'VideoInterviewRoom',
+    component: () => import('@/views/VideoInterviewRoom.vue'),
+    meta: { title: '视频面试', requiresAuth: true, fullScreen: true }
   }
 ]
 
