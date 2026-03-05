@@ -89,6 +89,12 @@ const routes = [
         meta: { title: 'LLM 配置' }
       },
       {
+        path: '/prompt-config',
+        name: 'PromptConfig',
+        component: () => import('@/views/PromptConfig.vue'),
+        meta: { title: '配置中心' }
+      },
+      {
         path: '/recall-test',
         name: 'RecallTest',
         component: () => import('@/views/RecallTest.vue'),

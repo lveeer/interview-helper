@@ -89,6 +89,10 @@
           <el-icon><Setting /></el-icon>
           <span>LLM 配置</span>
         </el-menu-item>
+        <el-menu-item index="/prompt-config">
+          <el-icon><Operation /></el-icon>
+          <span>配置中心</span>
+        </el-menu-item>
       </el-menu>
     </el-aside>
 
@@ -255,7 +259,8 @@ import {
   ArrowDown,
   Bell,
   Sunny,
-  Moon
+  Moon,
+  Operation
 } from '@element-plus/icons-vue'
 import notificationManager from '@/utils/notification'
 

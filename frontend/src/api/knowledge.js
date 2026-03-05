@@ -71,6 +71,15 @@ export const getQueryHistory = () => {
   })
 }
 
+// 保存查询历史
+export const saveQueryHistory = (query) => {
+  return request({
+    url: '/knowledge/query/history',
+    method: 'post',
+    data: { query }
+  })
+}
+
 // 清空查询历史
 export const clearQueryHistory = () => {
   return request({
