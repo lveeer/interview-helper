@@ -1741,9 +1741,833 @@ Authorization: Bearer <access_token>
 
 ---
 
-## 7. 评估反馈模块 (`/api/evaluation`)
+## 8. 配置中心模块 (`/api/prompt-config`)
 
-### 6.1 获取面试评估报告
+配置中心用于管理各功能的 Prompt 模板，支持版本控制和 A/B 测试。
+
+### 8.1 Prompt 配置管理
+
+#### 8.1.1 创建 Prompt 配置
+
+**接口:** `POST /api/prompt-config`
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**请求体:**
+```json
+{
+  "name": "interview_questions",
+  "display_name": "面试问题生成",
+  "description": "用于生成面试问题的提示词模板",
+  "category": "interview",
+  "tags": "面试,问题生成",
+  "is_active": true,
+  "initial_content": "你是一个专业的面试官...",
+  "initial_version": "v1.0.0"
+}
+```
+
+**字段说明:**
+- `name`: 配置名称，唯一标识（必填）
+- `display_name`: 显示名称（可选）
+- `description`: 配置描述（可选）
+- `category`: 配置分类，可选值：`interview`、`resume`、`evaluation`、`rag`、`game`、`other`
+- `tags`: 标签，逗号分隔（可选）
+- `is_active`: 是否启用，默认 `true`
+- `initial_content`: 初始版本内容（可选）
+- `initial_version`: 初始版本号，默认 `v1.0.0`
+
+**响应:**
+```json
+{
+  "code": 200,
+  "message": "创建成功",
+  "data": {
+    "id": 1,
+    "name": "interview_questions",
+    "display_name": "面试问题生成",
+    "description": "用于生成面试问题的提示词模板",
+    "category": "interview",
+    "active_version_id": 1,
+    "enable_ab_test": false,
+    "active_ab_test_id": null,
+    "tags": "面试,问题生成",
+    "is_active": true,
+    "created_at": "2026-03-04T10:00:00Z",
+    "updated_at": null,
+    "created_by": 1,
+    "active_version": {
+      "id": 1,
+      "version": "v1.0.0",
+      "is_published": true,
+      "created_at": "2026-03-04T10:00:00Z"
+    },
+    "version_count": 1
+  }
+}
+```
+
+#### 8.1.2 获取配置列表
+
+**接口:** `GET /api/prompt-config`
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**查询参数:**
+- `category`: 分类过滤（可选）
+- `is_active`: 是否启用过滤（可选）
+- `search`: 搜索关键词（可选）
+- `page`: 页码，默认 1
+- `page_size`: 每页数量，默认 20
+
+**响应:**
+```json
+{
+  "code": 200,
+  "message": "获取成功",
+  "data": [
+    {
+      "id": 1,
+      "name": "interview_questions",
+      "display_name": "面试问题生成",
+      "category": "interview",
+      "is_active": true,
+      "enable_ab_test": false,
+      "active_version_id": 1,
+      "version_count": 3,
+      "created_at": "2026-03-04T10:00:00Z",
+      "updated_at": "2026-03-04T11:00:00Z"
+    }
+  ],
+  "total": 1,
+  "page": 1,
+  "page_size": 20
+}
+```
+
+#### 8.1.3 获取配置详情
+
+**接口:** `GET /api/prompt-config/{config_id}`
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**路径参数:**
+- `config_id`: 配置 ID
+
+**响应:** 同创建响应
+
+#### 8.1.4 更新配置
+
+**接口:** `PUT /api/prompt-config/{config_id}`
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**路径参数:**
+- `config_id`: 配置 ID
+
+**请求体:**
+```json
+{
+  "display_name": "新的显示名称",
+  "description": "新的描述",
+  "category": "interview",
+  "tags": "新标签",
+  "is_active": true
+}
+```
+
+**响应:** 同创建响应
+
+#### 8.1.5 删除配置
+
+**接口:** `DELETE /api/prompt-config/{config_id}`
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**路径参数:**
+- `config_id`: 配置 ID
+
+**响应:**
+```json
+{
+  "code": 200,
+  "message": "删除成功"
+}
+```
+
+#### 8.1.6 设置激活版本
+
+**接口:** `POST /api/prompt-config/{config_id}/activate-version`
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**路径参数:**
+- `config_id`: 配置 ID
+
+**请求体:**
+```json
+{
+  "version_id": 2
+}
+```
+
+**响应:**
+```json
+{
+  "code": 200,
+  "message": "设置成功"
+}
+```
+
+---
+
+### 8.2 版本管理
+
+#### 8.2.1 创建版本
+
+**接口:** `POST /api/prompt-config/{config_id}/versions`
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**路径参数:**
+- `config_id`: 配置 ID
+
+**请求体:**
+```json
+{
+  "version": "v1.1.0",
+  "content": "优化后的 Prompt 内容...",
+  "change_log": "优化了问题生成的逻辑"
+}
+```
+
+**响应:**
+```json
+{
+  "code": 200,
+  "message": "创建成功",
+  "data": {
+    "id": 2,
+    "config_id": 1,
+    "version": "v1.1.0",
+    "content": "优化后的 Prompt 内容...",
+    "change_log": "优化了问题生成的逻辑",
+    "is_published": false,
+    "published_at": null,
+    "usage_count": 0,
+    "avg_score": null,
+    "created_at": "2026-03-04T10:00:00Z",
+    "created_by": 1
+  }
+}
+```
+
+#### 8.2.2 获取版本列表
+
+**接口:** `GET /api/prompt-config/{config_id}/versions`
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**路径参数:**
+- `config_id`: 配置 ID
+
+**查询参数:**
+- `include_unpublished`: 是否包含未发布版本，默认 `true`
+
+**响应:**
+```json
+{
+  "code": 200,
+  "message": "获取成功",
+  "data": [
+    {
+      "id": 2,
+      "config_id": 1,
+      "version": "v1.1.0",
+      "content": "优化后的 Prompt 内容...",
+      "change_log": "优化了问题生成的逻辑",
+      "is_published": true,
+      "published_at": "2026-03-04T11:00:00Z",
+      "usage_count": 10,
+      "avg_score": 85.5,
+      "created_at": "2026-03-04T10:00:00Z",
+      "created_by": 1
+    },
+    {
+      "id": 1,
+      "config_id": 1,
+      "version": "v1.0.0",
+      "content": "初始 Prompt 内容...",
+      "change_log": "初始版本",
+      "is_published": true,
+      "published_at": "2026-03-04T10:00:00Z",
+      "usage_count": 50,
+      "avg_score": 80.0,
+      "created_at": "2026-03-04T09:00:00Z",
+      "created_by": 1
+    }
+  ]
+}
+```
+
+#### 8.2.3 获取版本详情
+
+**接口:** `GET /api/prompt-config/versions/{version_id}`
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**路径参数:**
+- `version_id`: 版本 ID
+
+**响应:** 同创建版本响应
+
+#### 8.2.4 更新版本
+
+**接口:** `PUT /api/prompt-config/versions/{version_id}`
+
+**说明:** 仅未发布的版本可以更新
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**路径参数:**
+- `version_id`: 版本 ID
+
+**请求体:**
+```json
+{
+  "content": "修改后的内容",
+  "change_log": "修改说明"
+}
+```
+
+**响应:** 同创建版本响应
+
+#### 8.2.5 发布版本
+
+**接口:** `POST /api/prompt-config/versions/{version_id}/publish`
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**路径参数:**
+- `version_id`: 版本 ID
+
+**响应:**
+```json
+{
+  "code": 200,
+  "message": "发布成功",
+  "data": {
+    "id": 2,
+    "config_id": 1,
+    "version": "v1.1.0",
+    "content": "优化后的 Prompt 内容...",
+    "change_log": "优化了问题生成的逻辑",
+    "is_published": true,
+    "published_at": "2026-03-04T11:00:00Z",
+    "usage_count": 0,
+    "avg_score": null,
+    "created_at": "2026-03-04T10:00:00Z",
+    "created_by": 1
+  }
+}
+```
+
+#### 8.2.6 删除版本
+
+**接口:** `DELETE /api/prompt-config/versions/{version_id}`
+
+**说明:** 仅未发布的版本可以删除
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**路径参数:**
+- `version_id`: 版本 ID
+
+**响应:**
+```json
+{
+  "code": 200,
+  "message": "删除成功"
+}
+```
+
+---
+
+### 8.3 A/B 测试管理
+
+#### 8.3.1 创建 A/B 测试
+
+**接口:** `POST /api/prompt-config/{config_id}/ab-tests`
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**路径参数:**
+- `config_id`: 配置 ID
+
+**请求体:**
+```json
+{
+  "name": "问题生成优化测试",
+  "description": "测试新版问题生成 Prompt 的效果",
+  "control_version_id": 1,
+  "experiment_version_id": 2,
+  "traffic_ratio": 0.3,
+  "start_time": "2026-03-04T10:00:00Z",
+  "end_time": "2026-03-11T10:00:00Z"
+}
+```
+
+**字段说明:**
+- `name`: 测试名称（必填）
+- `description`: 测试描述（可选）
+- `control_version_id`: 对照组版本 ID（必填）
+- `experiment_version_id`: 实验组版本 ID（必填）
+- `traffic_ratio`: 实验组流量比例，0-1 之间，默认 0.5
+- `start_time`: 开始时间（可选）
+- `end_time`: 结束时间（可选）
+
+**响应:**
+```json
+{
+  "code": 200,
+  "message": "创建成功",
+  "data": {
+    "id": 1,
+    "config_id": 1,
+    "name": "问题生成优化测试",
+    "description": "测试新版问题生成 Prompt 的效果",
+    "control_version_id": 1,
+    "experiment_version_id": 2,
+    "traffic_ratio": 0.3,
+    "status": "draft",
+    "start_time": "2026-03-04T10:00:00Z",
+    "end_time": "2026-03-11T10:00:00Z",
+    "control_samples": 0,
+    "experiment_samples": 0,
+    "created_at": "2026-03-04T09:00:00Z",
+    "updated_at": null,
+    "created_by": 1,
+    "control_version": {
+      "id": 1,
+      "version": "v1.0.0",
+      "is_published": true,
+      "created_at": "2026-03-04T08:00:00Z"
+    },
+    "experiment_version": {
+      "id": 2,
+      "version": "v1.1.0",
+      "is_published": true,
+      "created_at": "2026-03-04T08:30:00Z"
+    }
+  }
+}
+```
+
+#### 8.3.2 获取 A/B 测试列表
+
+**接口:** `GET /api/prompt-config/{config_id}/ab-tests`
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**路径参数:**
+- `config_id`: 配置 ID
+
+**查询参数:**
+- `status`: 状态过滤（可选）
+- `page`: 页码，默认 1
+- `page_size`: 每页数量，默认 20
+
+**响应:**
+```json
+{
+  "code": 200,
+  "message": "获取成功",
+  "data": [
+    {
+      "id": 1,
+      "name": "问题生成优化测试",
+      "config_id": 1,
+      "config_name": "interview_questions",
+      "status": "running",
+      "traffic_ratio": 0.3,
+      "control_samples": 50,
+      "experiment_samples": 20,
+      "start_time": "2026-03-04T10:00:00Z",
+      "end_time": "2026-03-11T10:00:00Z",
+      "created_at": "2026-03-04T09:00:00Z"
+    }
+  ],
+  "total": 1,
+  "page": 1,
+  "page_size": 20
+}
+```
+
+#### 8.3.3 获取 A/B 测试详情
+
+**接口:** `GET /api/prompt-config/ab-tests/{test_id}`
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**路径参数:**
+- `test_id`: 测试 ID
+
+**响应:** 同创建响应
+
+#### 8.3.4 更新 A/B 测试
+
+**接口:** `PUT /api/prompt-config/ab-tests/{test_id}`
+
+**说明:** 仅草稿状态可以更新
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**路径参数:**
+- `test_id`: 测试 ID
+
+**请求体:**
+```json
+{
+  "name": "新的测试名称",
+  "description": "新的描述",
+  "traffic_ratio": 0.5,
+  "start_time": "2026-03-05T10:00:00Z",
+  "end_time": "2026-03-12T10:00:00Z"
+}
+```
+
+**响应:** 同创建响应
+
+#### 8.3.5 变更 A/B 测试状态
+
+**接口:** `POST /api/prompt-config/ab-tests/{test_id}/status`
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**路径参数:**
+- `test_id`: 测试 ID
+
+**请求体:**
+```json
+{
+  "status": "running"
+}
+```
+
+**状态流转:**
+- `draft` → `running`: 开始测试
+- `running` → `paused`: 暂停测试
+- `running` → `completed`: 完成测试
+- `paused` → `running`: 恢复测试
+- `paused` → `completed`: 完成测试
+- `completed` → `archived`: 归档测试
+
+**响应:**
+```json
+{
+  "code": 200,
+  "message": "状态变更成功",
+  "data": {
+    "id": 1,
+    "config_id": 1,
+    "name": "问题生成优化测试",
+    "status": "running",
+    "start_time": "2026-03-04T10:00:00Z",
+    "control_samples": 0,
+    "experiment_samples": 0,
+    "created_at": "2026-03-04T09:00:00Z"
+  }
+}
+```
+
+#### 8.3.6 激活 A/B 测试
+
+**接口:** `POST /api/prompt-config/{config_id}/activate-ab-test`
+
+**说明:** 将测试应用到配置，开始分流
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**路径参数:**
+- `config_id`: 配置 ID
+
+**请求体:**
+```json
+{
+  "ab_test_id": 1
+}
+```
+
+**响应:**
+```json
+{
+  "code": 200,
+  "message": "激活成功"
+}
+```
+
+#### 8.3.7 停用 A/B 测试
+
+**接口:** `POST /api/prompt-config/{config_id}/deactivate-ab-test`
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**路径参数:**
+- `config_id`: 配置 ID
+
+**响应:**
+```json
+{
+  "code": 200,
+  "message": "停用成功"
+}
+```
+
+#### 8.3.8 删除 A/B 测试
+
+**接口:** `DELETE /api/prompt-config/ab-tests/{test_id}`
+
+**说明:** 仅草稿状态可以删除
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**路径参数:**
+- `test_id`: 测试 ID
+
+**响应:**
+```json
+{
+  "code": 200,
+  "message": "删除成功"
+}
+```
+
+---
+
+### 8.4 A/B 测试结果
+
+#### 8.4.1 记录测试结果
+
+**接口:** `POST /api/prompt-config/ab-tests/{test_id}/results`
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**路径参数:**
+- `test_id`: 测试 ID
+
+**请求体:**
+```json
+{
+  "variant": "control",
+  "session_id": "interview_123",
+  "metrics": "{\"response_time\": 1.5, \"quality_score\": 85}",
+  "score": 85,
+  "feedback": "问题质量很好"
+}
+```
+
+**字段说明:**
+- `variant`: 变体类型，`control` 或 `experiment`
+- `session_id`: 会话 ID（用于追踪）
+- `metrics`: 指标数据，JSON 字符串（可选）
+- `score`: 评分（可选）
+- `feedback`: 反馈信息（可选）
+
+**响应:**
+```json
+{
+  "code": 200,
+  "message": "记录成功",
+  "data": {
+    "id": 1,
+    "ab_test_id": 1,
+    "variant": "control",
+    "version_id": 1,
+    "session_id": "interview_123",
+    "user_id": 1,
+    "metrics": "{\"response_time\": 1.5, \"quality_score\": 85}",
+    "score": 85,
+    "feedback": "问题质量很好",
+    "created_at": "2026-03-04T10:00:00Z"
+  }
+}
+```
+
+#### 8.4.2 获取测试统计
+
+**接口:** `GET /api/prompt-config/ab-tests/{test_id}/statistics`
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**路径参数:**
+- `test_id`: 测试 ID
+
+**响应:**
+```json
+{
+  "code": 200,
+  "message": "获取成功",
+  "data": {
+    "total_samples": 100,
+    "control_samples": 70,
+    "experiment_samples": 30,
+    "control_avg_score": 80.5,
+    "experiment_avg_score": 85.2,
+    "improvement_rate": 5.84
+  }
+}
+```
+
+**字段说明:**
+- `total_samples`: 总样本数
+- `control_samples`: 对照组样本数
+- `experiment_samples`: 实验组样本数
+- `control_avg_score`: 对照组平均分
+- `experiment_avg_score`: 实验组平均分
+- `improvement_rate`: 提升百分比
+
+---
+
+### 8.5 Prompt 获取
+
+#### 8.5.1 获取生效的 Prompt
+
+**接口:** `GET /api/prompt-config/resolve/{config_name}`
+
+**功能:** 获取生效的 Prompt，自动处理 A/B 测试分流
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**路径参数:**
+- `config_name`: 配置名称
+
+**查询参数:**
+- `user_id`: 用户 ID（用于一致性分流，可选）
+- `session_id`: 会话 ID（用于一致性分流，可选）
+
+**响应:**
+```json
+{
+  "code": 200,
+  "message": "获取成功",
+  "data": {
+    "config_id": 1,
+    "config_name": "interview_questions",
+    "version_id": 2,
+    "version": "v1.1.0",
+    "content": "Prompt 内容...",
+    "is_ab_test": true,
+    "ab_test_variant": "experiment",
+    "ab_test_id": 1
+  }
+}
+```
+
+**字段说明:**
+- `is_ab_test`: 是否来自 A/B 测试
+- `ab_test_variant`: 变体类型（`control` 或 `experiment`）
+- `ab_test_id`: A/B 测试 ID
+
+---
+
+### 8.6 初始化
+
+#### 8.6.1 从文件系统初始化
+
+**接口:** `POST /api/prompt-config/init-from-files`
+
+**功能:** 将 `prompts/` 目录下的文件导入数据库
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**响应:**
+```json
+{
+  "code": 200,
+  "message": "成功导入 15 个配置",
+  "data": {
+    "imported_count": 15
+  }
+}
+```
+
+---
+
+## 9. 评估反馈模块 (`/api/evaluation`)
+
+### 9.1 获取面试评估报告
 
 **接口:** `GET /api/evaluation/report/{interview_id}`
 
@@ -1793,9 +2617,9 @@ Authorization: Bearer <access_token>
 
 ---
 
-## 7. 统计数据模块 (`/api/statistics`)
+## 10. 统计数据模块 (`/api/statistics`)
 
-### 7.1 获取仪表盘统计数据
+### 10.1 获取仪表盘统计数据
 
 **接口:** `GET /api/statistics/dashboard`
 
@@ -1829,9 +2653,9 @@ Authorization: Bearer <access_token>
 
 ---
 
-## 8. 系统接口
+## 11. 系统接口
 
-### 8.1 健康检查
+### 11.1 健康检查
 
 **接口:** `GET /health`
 
@@ -1842,7 +2666,7 @@ Authorization: Bearer <access_token>
 }
 ```
 
-### 8.2 根路径
+### 11.2 根路径
 
 **接口:** `GET /`
 

@@ -32,6 +32,24 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     return user
 
 
+def get_current_user_optional(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    """获取当前用户（可选，未登录时返回 None）"""
+    from app.core.security import decode_access_token
+    from typing import Optional
+    
+    try:
+        payload = decode_access_token(token)
+        if payload is None:
+            return None
+        username: str = payload.get("sub")
+        if username is None:
+            return None
+        user = db.query(User).filter(User.username == username).first()
+        return user
+    except Exception:
+        return None
+
+
 @router.post("/register", status_code=status.HTTP_201_CREATED)
 async def register(user: UserCreate, db: Session = Depends(get_db)):
     """用户注册"""

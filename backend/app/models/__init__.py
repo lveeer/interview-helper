@@ -10,6 +10,13 @@ from app.models.game import (
     LeaderboardSnapshot
 )
 from app.models.persona import InterviewerPersona, PersonaConversationContext
+from app.models.prompt_config import (
+    PromptConfig,
+    PromptVersion,
+    PromptCategory,
+    ABTest,
+    ABTestResult
+)
 
 __all__ = [
     "User",
@@ -24,5 +31,11 @@ __all__ = [
     "UserAchievement",
     "LeaderboardSnapshot",
     "InterviewerPersona",
-    "PersonaConversationContext"
+    "PersonaConversationContext",
+    # 配置中心
+    "PromptConfig",
+    "PromptVersion",
+    "PromptCategory",
+    "ABTest",
+    "ABTestResult"
 ]

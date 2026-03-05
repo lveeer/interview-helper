@@ -14,7 +14,7 @@ logging.basicConfig(
     ]
 )
 
-from app.api import auth, resume, job, interview, knowledge, evaluation, statistics, task_notification, llm_config, game, persona
+from app.api import auth, resume, job, interview, knowledge, evaluation, statistics, task_notification, llm_config, game, persona, prompt_config
 
 
 @asynccontextmanager
@@ -57,6 +57,7 @@ app.include_router(task_notification.router, prefix="/api/task", tags=["任务�
 app.include_router(llm_config.router)
 app.include_router(game.router, prefix="/api")
 app.include_router(persona.router, prefix="/api")
+app.include_router(prompt_config.router, prefix="/api/prompt-config", tags=["配置中心"])
 
 
 @app.get("/")
