@@ -952,7 +952,8 @@ onMounted(() => {
 }
 
 .modal-container {
-  width: 520px;
+  width: 640px;
+  max-width: 95vw;
   max-height: 90vh;
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(20px) saturate(180%);
@@ -970,7 +971,7 @@ onMounted(() => {
 }
 
 .modal-container.mode-dialog {
-  width: 480px;
+  width: 560px;
 }
 
 .modal-titlebar {

@@ -1331,7 +1331,8 @@ onMounted(() => {
 }
 
 .modal-container {
-  width: 480px;
+  width: 580px;
+  max-width: 95vw;
   max-height: 90vh;
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(20px) saturate(180%);
