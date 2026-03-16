@@ -71,6 +71,7 @@
                         <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
                         <circle cx="12" cy="12" r="3"></circle>
                       </svg>
+                      <span class="btn-text">查看</span>
                     </button>
                     <button class="table-btn refresh" @click="reparseResume(resume.id)" :disabled="reparseLoading[resume.id]" title="重新解析">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" :class="{ spinning: reparseLoading[resume.id] }">
@@ -78,6 +79,7 @@
                         <polyline points="1 20 1 14 7 14"></polyline>
                         <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
                       </svg>
+                      <span class="btn-text">解析</span>
                     </button>
                     <button class="table-btn delete" @click="deleteResume(resume.id)" title="删除">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -86,6 +88,7 @@
                         <line x1="10" y1="11" x2="10" y2="17"></line>
                         <line x1="14" y1="11" x2="14" y2="17"></line>
                       </svg>
+                      <span class="btn-text">删除</span>
                     </button>
                   </div>
                 </td>
@@ -746,30 +749,36 @@ onMounted(() => {
 }
 
 .col-actions {
-  width: 140px;
+  min-width: 200px;
 }
 
 .action-group {
   display: flex;
-  gap: 4px;
+  gap: 8px;
 }
 
 .table-btn {
-  width: 32px;
-  height: 32px;
   display: flex;
   align-items: center;
-  justify-content: center;
+  gap: 5px;
+  padding: 6px 12px;
   border: none;
   border-radius: 6px;
   background: transparent;
   cursor: pointer;
   transition: all 0.15s ease;
+  font-size: 13px;
+  font-weight: 500;
 }
 
 .table-btn svg {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.table-btn .btn-text {
+  white-space: nowrap;
 }
 
 .table-btn.view {

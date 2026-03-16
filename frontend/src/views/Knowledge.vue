@@ -111,18 +111,21 @@
                             <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
                             <circle cx="12" cy="12" r="3"></circle>
                           </svg>
+                          <span class="btn-text">预览</span>
                         </button>
                         <button class="table-btn success" @click="openStrategyDialog(doc)" title="更改策略">
                           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <circle cx="12" cy="12" r="3"></circle>
                             <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
                           </svg>
+                          <span class="btn-text">策略</span>
                         </button>
                         <button class="table-btn danger" @click="deleteDocument(doc.id)" title="删除">
                           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <polyline points="3 6 5 6 21 6"></polyline>
                             <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
                           </svg>
+                          <span class="btn-text">删除</span>
                         </button>
                       </div>
                     </td>
@@ -1053,25 +1056,31 @@ onMounted(() => {
 
 .action-group {
   display: flex;
-  gap: 3px;
+  gap: 8px;
 }
 
 .table-btn {
-  width: 26px;
-  height: 26px;
   display: flex;
   align-items: center;
-  justify-content: center;
+  gap: 5px;
+  padding: 6px 12px;
   border: none;
-  border-radius: 5px;
+  border-radius: 6px;
   background: transparent;
   cursor: pointer;
   transition: all 0.15s ease;
+  font-size: 13px;
+  font-weight: 500;
 }
 
 .table-btn svg {
   width: 14px;
   height: 14px;
+  flex-shrink: 0;
+}
+
+.table-btn .btn-text {
+  white-space: nowrap;
 }
 
 .table-btn.primary { color: #007aff; }

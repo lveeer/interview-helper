@@ -64,6 +64,7 @@
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <polygon points="5 3 19 12 5 21 5 3"></polygon>
                       </svg>
+                      <span class="btn-text">开始</span>
                     </button>
                     <button
                       v-if="interview.status === 'in_progress'"
@@ -74,6 +75,7 @@
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <polygon points="5 3 19 12 5 21 5 3"></polygon>
                       </svg>
+                      <span class="btn-text">继续</span>
                     </button>
                     <button
                       v-if="interview.status === 'completed'"
@@ -87,6 +89,7 @@
                         <line x1="16" y1="13" x2="8" y2="13"></line>
                         <line x1="16" y1="17" x2="8" y2="17"></line>
                       </svg>
+                      <span class="btn-text">报告</span>
                     </button>
                     <button
                       v-if="interview.status === 'completed'"
@@ -97,6 +100,7 @@
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
                       </svg>
+                      <span class="btn-text">对话</span>
                     </button>
                     <button
                       v-if="interview.status === 'analyzing'"
@@ -108,6 +112,7 @@
                         <circle cx="12" cy="12" r="10"></circle>
                         <path d="M12 6v6l4 2"></path>
                       </svg>
+                      <span class="btn-text">分析中</span>
                     </button>
                   </div>
                 </td>
@@ -742,25 +747,31 @@ onMounted(() => {
 /* 操作按钮 */
 .action-group {
   display: flex;
-  gap: 4px;
+  gap: 8px;
 }
 
 .table-btn {
-  width: 28px;
-  height: 28px;
   display: flex;
   align-items: center;
-  justify-content: center;
+  gap: 5px;
+  padding: 6px 12px;
   border: none;
   border-radius: 6px;
   background: transparent;
   cursor: pointer;
   transition: all 0.15s ease;
+  font-size: 13px;
+  font-weight: 500;
 }
 
 .table-btn svg {
   width: 14px;
   height: 14px;
+  flex-shrink: 0;
+}
+
+.table-btn .btn-text {
+  white-space: nowrap;
 }
 
 .table-btn.success { color: #34c759; }
