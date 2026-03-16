@@ -73,6 +73,13 @@
                       </svg>
                       <span class="btn-text">查看</span>
                     </button>
+                    <button class="table-btn edit" @click="editResume(resume)" title="编辑">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                      </svg>
+                      <span class="btn-text">编辑</span>
+                    </button>
                     <button class="table-btn refresh" @click="reparseResume(resume.id)" :disabled="reparseLoading[resume.id]" title="重新解析">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" :class="{ spinning: reparseLoading[resume.id] }">
                         <polyline points="23 4 23 10 17 10"></polyline>
@@ -348,24 +355,265 @@
         
       </div>
     </el-dialog>
+
+    <!-- 编辑简历对话框 -->
+    <Teleport to="body">
+      <Transition name="modal">
+        <div v-if="showEditDialog" class="modal-overlay" @click.self="showEditDialog = false">
+          <div class="modal-container edit-modal">
+            <div class="modal-titlebar">
+              <span class="modal-title">编辑简历</span>
+            </div>
+            <div class="modal-content">
+              <div v-if="editFormData" class="edit-form">
+                <!-- 个人信息编辑 -->
+                <div class="edit-section">
+                  <h4 class="edit-section-title">个人信息</h4>
+                  <div class="edit-fields">
+                    <div class="edit-field">
+                      <label>姓名</label>
+                      <input v-model="editFormData.personal_info.name" type="text" placeholder="请输入姓名" />
+                    </div>
+                    <div class="edit-field">
+                      <label>年龄</label>
+                      <input v-model="editFormData.personal_info.age" type="text" placeholder="请输入年龄" />
+                    </div>
+                    <div class="edit-field">
+                      <label>电话</label>
+                      <input v-model="editFormData.personal_info.phone" type="text" placeholder="请输入电话" />
+                    </div>
+                    <div class="edit-field">
+                      <label>邮箱</label>
+                      <input v-model="editFormData.personal_info.email" type="email" placeholder="请输入邮箱" />
+                    </div>
+                    <div class="edit-field">
+                      <label>工作年限</label>
+                      <input v-model="editFormData.personal_info.work_years" type="text" placeholder="请输入工作年限" />
+                    </div>
+                    <div class="edit-field">
+                      <label>个人博客</label>
+                      <input v-model="editFormData.personal_info.blog" type="url" placeholder="请输入个人博客地址" />
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 教育背景编辑 -->
+                <div class="edit-section">
+                  <div class="edit-section-header">
+                    <h4 class="edit-section-title">教育背景</h4>
+                    <button class="add-btn" @click="addEducation">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                      </svg>
+                      添加
+                    </button>
+                  </div>
+                  <div v-for="(edu, index) in editFormData.education" :key="'edu-' + index" class="edit-item">
+                    <div class="edit-item-header">
+                      <span class="edit-item-index">教育经历 {{ index + 1 }}</span>
+                      <button class="remove-btn" @click="removeEducation(index)">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <polyline points="3 6 5 6 21 6"></polyline>
+                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                        </svg>
+                      </button>
+                    </div>
+                    <div class="edit-fields">
+                      <div class="edit-field">
+                        <label>学校</label>
+                        <input v-model="edu.school" type="text" placeholder="请输入学校名称" />
+                      </div>
+                      <div class="edit-field">
+                        <label>专业</label>
+                        <input v-model="edu.major" type="text" placeholder="请输入专业" />
+                      </div>
+                      <div class="edit-field">
+                        <label>学位</label>
+                        <input v-model="edu.degree" type="text" placeholder="请输入学位" />
+                      </div>
+                      <div class="edit-field">
+                        <label>开始时间</label>
+                        <input v-model="edu.start_date" type="text" placeholder="如：2020-09" />
+                      </div>
+                      <div class="edit-field">
+                        <label>结束时间</label>
+                        <input v-model="edu.end_date" type="text" placeholder="如：2024-06" />
+                      </div>
+                    </div>
+                  </div>
+                  <div v-if="!editFormData.education || editFormData.education.length === 0" class="empty-hint">
+                    暂无教育背景，点击上方按钮添加
+                  </div>
+                </div>
+
+                <!-- 工作经验编辑 -->
+                <div class="edit-section">
+                  <div class="edit-section-header">
+                    <h4 class="edit-section-title">工作经验</h4>
+                    <button class="add-btn" @click="addExperience">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                      </svg>
+                      添加
+                    </button>
+                  </div>
+                  <div v-for="(exp, index) in editFormData.experience" :key="'exp-' + index" class="edit-item">
+                    <div class="edit-item-header">
+                      <span class="edit-item-index">工作经历 {{ index + 1 }}</span>
+                      <button class="remove-btn" @click="removeExperience(index)">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <polyline points="3 6 5 6 21 6"></polyline>
+                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                        </svg>
+                      </button>
+                    </div>
+                    <div class="edit-fields">
+                      <div class="edit-field">
+                        <label>公司</label>
+                        <input v-model="exp.company" type="text" placeholder="请输入公司名称" />
+                      </div>
+                      <div class="edit-field">
+                        <label>职位</label>
+                        <input v-model="exp.position" type="text" placeholder="请输入职位" />
+                      </div>
+                      <div class="edit-field">
+                        <label>开始时间</label>
+                        <input v-model="exp.start_date" type="text" placeholder="如：2020-03" />
+                      </div>
+                      <div class="edit-field">
+                        <label>结束时间</label>
+                        <input v-model="exp.end_date" type="text" placeholder="如：2023-06 或 至今" />
+                      </div>
+                      <div class="edit-field full-width">
+                        <label>工作描述</label>
+                        <textarea v-model="exp.description" placeholder="请输入工作描述" rows="3"></textarea>
+                      </div>
+                      <div class="edit-field full-width">
+                        <label>主要职责（每行一条）</label>
+                        <textarea v-model="exp.responsibilities_text" placeholder="每行输入一条职责" rows="4"></textarea>
+                      </div>
+                    </div>
+                  </div>
+                  <div v-if="!editFormData.experience || editFormData.experience.length === 0" class="empty-hint">
+                    暂无工作经验，点击上方按钮添加
+                  </div>
+                </div>
+
+                <!-- 项目经历编辑 -->
+                <div class="edit-section">
+                  <div class="edit-section-header">
+                    <h4 class="edit-section-title">项目经历</h4>
+                    <button class="add-btn" @click="addProject">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                      </svg>
+                      添加
+                    </button>
+                  </div>
+                  <div v-for="(project, index) in editFormData.projects" :key="'project-' + index" class="edit-item">
+                    <div class="edit-item-header">
+                      <span class="edit-item-index">项目经历 {{ index + 1 }}</span>
+                      <button class="remove-btn" @click="removeProject(index)">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <polyline points="3 6 5 6 21 6"></polyline>
+                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                        </svg>
+                      </button>
+                    </div>
+                    <div class="edit-fields">
+                      <div class="edit-field">
+                        <label>项目名称</label>
+                        <input v-model="project.name" type="text" placeholder="请输入项目名称" />
+                      </div>
+                      <div class="edit-field">
+                        <label>角色</label>
+                        <input v-model="project.role" type="text" placeholder="请输入担任角色" />
+                      </div>
+                      <div class="edit-field">
+                        <label>开始时间</label>
+                        <input v-model="project.start_date" type="text" placeholder="如：2021-01" />
+                      </div>
+                      <div class="edit-field">
+                        <label>结束时间</label>
+                        <input v-model="project.end_date" type="text" placeholder="如：2022-06" />
+                      </div>
+                      <div class="edit-field full-width">
+                        <label>项目背景</label>
+                        <textarea v-model="project.background" placeholder="请输入项目背景" rows="3"></textarea>
+                      </div>
+                      <div class="edit-field full-width">
+                        <label>技术栈（逗号分隔）</label>
+                        <input v-model="project.tech_stack_text" type="text" placeholder="如：Vue, Node.js, MySQL" />
+                      </div>
+                      <div class="edit-field full-width">
+                        <label>主要职责（每行一条）</label>
+                        <textarea v-model="project.responsibilities_text" placeholder="每行输入一条职责" rows="4"></textarea>
+                      </div>
+                    </div>
+                  </div>
+                  <div v-if="!editFormData.projects || editFormData.projects.length === 0" class="empty-hint">
+                    暂无项目经历，点击上方按钮添加
+                  </div>
+                </div>
+
+                <!-- 技能特长编辑 -->
+                <div class="edit-section">
+                  <h4 class="edit-section-title">技能特长</h4>
+                  <div class="edit-field full-width">
+                    <label>技能标签（逗号分隔）</label>
+                    <input v-model="editFormData.skills_text" type="text" placeholder="如：JavaScript, Python, SQL" />
+                  </div>
+                </div>
+
+                <!-- 荣誉证书编辑 -->
+                <div class="edit-section">
+                  <h4 class="edit-section-title">荣誉证书</h4>
+                  <div class="edit-field full-width">
+                    <label>荣誉证书（每行一条）</label>
+                    <textarea v-model="editFormData.highlights_text" placeholder="每行输入一条荣誉或证书" rows="4"></textarea>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button class="btn-secondary" @click="showEditDialog = false">取消</button>
+              <button class="btn-primary" :disabled="saving" @click="saveEdit">
+                <svg v-if="saving" class="spinner" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10" stroke-opacity="0.25"></circle>
+                  <path d="M12 2a10 10 0 0 1 10 10" stroke-linecap="round"></path>
+                </svg>
+                {{ saving ? '保存中...' : '保存' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getResumeList, uploadResume, deleteResume as deleteResumeApi, getResumeDetail, reparseResume as reparseResumeApi } from '@/api/resume'
+import { getResumeList, uploadResume, deleteResume as deleteResumeApi, getResumeDetail, reparseResume as reparseResumeApi, updateResume } from '@/api/resume'
 
 const loading = ref(false)
 const uploading = ref(false)
 const showUploadDialog = ref(false)
 const showDetailDialog = ref(false)
+const showEditDialog = ref(false)
 const fileInput = ref(null)
 const resumeList = ref([])
 const currentResume = ref(null)
 const selectedFile = ref(null)
 const reparseLoading = ref({})
 const isDragOver = ref(false)
+const editFormData = ref(null)
+const editingResumeId = ref(null)
+const saving = ref(false)
 
 const loadResumeList = async () => {
   loading.value = true
@@ -497,6 +745,159 @@ const reparseResume = async (id) => {
     }
   } finally {
     reparseLoading.value[id] = false
+  }
+}
+
+// 编辑简历
+const editResume = async (resume) => {
+  try {
+    const res = await getResumeDetail(resume.id)
+    if (res.code === 200) {
+      editingResumeId.value = resume.id
+      // 深拷贝数据用于编辑
+      editFormData.value = JSON.parse(JSON.stringify(res.data))
+      
+      // 确保必要的字段存在
+      if (!editFormData.value.personal_info) {
+        editFormData.value.personal_info = {}
+      }
+      if (!editFormData.value.education) {
+        editFormData.value.education = []
+      }
+      if (!editFormData.value.experience) {
+        editFormData.value.experience = []
+      }
+      if (!editFormData.value.projects) {
+        editFormData.value.projects = []
+      }
+      if (!editFormData.value.skills) {
+        editFormData.value.skills = []
+      }
+      if (!editFormData.value.highlights) {
+        editFormData.value.highlights = []
+      }
+      
+      // 转换数组为文本格式便于编辑
+      editFormData.value.skills_text = (editFormData.value.skills || []).join(', ')
+      editFormData.value.highlights_text = (editFormData.value.highlights || []).join('\n')
+      
+      // 为经验项添加职责文本
+      editFormData.value.experience.forEach(exp => {
+        exp.responsibilities_text = (exp.responsibilities || []).join('\n')
+      })
+      
+      // 为项目添加职责文本和技术栈文本
+      editFormData.value.projects.forEach(project => {
+        project.responsibilities_text = (project.responsibilities || []).join('\n')
+        project.tech_stack_text = (project.tech_stack || []).join(', ')
+      })
+      
+      showEditDialog.value = true
+    } else {
+      ElMessage.error('获取简历详情失败')
+    }
+  } catch (error) {
+    console.error('获取简历详情失败:', error)
+    ElMessage.error('获取简历详情失败')
+  }
+}
+
+// 添加教育经历
+const addEducation = () => {
+  editFormData.value.education.push({
+    school: '',
+    major: '',
+    degree: '',
+    start_date: '',
+    end_date: ''
+  })
+}
+
+// 移除教育经历
+const removeEducation = (index) => {
+  editFormData.value.education.splice(index, 1)
+}
+
+// 添加工作经历
+const addExperience = () => {
+  editFormData.value.experience.push({
+    company: '',
+    position: '',
+    start_date: '',
+    end_date: '',
+    description: '',
+    responsibilities: [],
+    responsibilities_text: ''
+  })
+}
+
+// 移除工作经历
+const removeExperience = (index) => {
+  editFormData.value.experience.splice(index, 1)
+}
+
+// 添加项目经历
+const addProject = () => {
+  editFormData.value.projects.push({
+    name: '',
+    role: '',
+    start_date: '',
+    end_date: '',
+    background: '',
+    tech_stack: [],
+    tech_stack_text: '',
+    responsibilities: [],
+    responsibilities_text: ''
+  })
+}
+
+// 移除项目经历
+const removeProject = (index) => {
+  editFormData.value.projects.splice(index, 1)
+}
+
+// 保存编辑
+const saveEdit = async () => {
+  saving.value = true
+  try {
+    // 准备提交数据
+    const submitData = JSON.parse(JSON.stringify(editFormData.value))
+    
+    // 转换文本为数组
+    submitData.skills = submitData.skills_text.split(',').map(s => s.trim()).filter(s => s)
+    submitData.highlights = submitData.highlights_text.split('\n').map(s => s.trim()).filter(s => s)
+    
+    // 转换经验的职责文本为数组
+    submitData.experience.forEach(exp => {
+      exp.responsibilities = (exp.responsibilities_text || '').split('\n').map(s => s.trim()).filter(s => s)
+      delete exp.responsibilities_text
+    })
+    
+    // 转换项目的职责和技术栈文本为数组
+    submitData.projects.forEach(project => {
+      project.responsibilities = (project.responsibilities_text || '').split('\n').map(s => s.trim()).filter(s => s)
+      project.tech_stack = (project.tech_stack_text || '').split(',').map(s => s.trim()).filter(s => s)
+      delete project.responsibilities_text
+      delete project.tech_stack_text
+    })
+    
+    // 删除临时的文本字段
+    delete submitData.skills_text
+    delete submitData.highlights_text
+    
+    const res = await updateResume(editingResumeId.value, submitData)
+    if (res.code === 200) {
+      ElMessage.success('保存成功')
+      showEditDialog.value = false
+      loadResumeList()
+    } else {
+      ElMessage.error(res.message || '保存失败')
+    }
+  } catch (error) {
+    console.error('保存失败:', error)
+    ElMessage.error('保存失败')
+  } finally {
+    saving.value = false
   }
 }
 
@@ -1704,5 +2105,181 @@ onMounted(() => {
 
 .resume-template::-webkit-scrollbar-thumb:hover {
   background: #959da5;
+}
+
+/* 编辑模态框样式 */
+.edit-modal {
+  width: 800px;
+  max-width: 95vw;
+  max-height: 90vh;
+}
+
+.edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.edit-section {
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.02);
+  border-radius: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.edit-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.edit-section-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1d1d1f;
+  margin: 0 0 16px 0;
+}
+
+.edit-section-header .edit-section-title {
+  margin: 0;
+}
+
+.edit-fields {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.edit-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.edit-field.full-width {
+  grid-column: 1 / -1;
+}
+
+.edit-field label {
+  font-size: 12px;
+  font-weight: 500;
+  color: #86868b;
+}
+
+.edit-field input,
+.edit-field textarea {
+  padding: 10px 12px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  font-size: 13px;
+  color: #1d1d1f;
+  background: white;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.edit-field input:focus,
+.edit-field textarea:focus {
+  outline: none;
+  border-color: #007aff;
+  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
+}
+
+.edit-field textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.edit-item {
+  padding: 16px;
+  margin-bottom: 12px;
+  background: white;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.edit-item:last-child {
+  margin-bottom: 0;
+}
+
+.edit-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.edit-item-index {
+  font-size: 13px;
+  font-weight: 500;
+  color: #007aff;
+}
+
+.remove-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  color: #86868b;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+}
+
+.remove-btn:hover {
+  background: rgba(255, 59, 48, 0.1);
+  color: #ff3b30;
+}
+
+.remove-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.add-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border: 1px solid rgba(0, 122, 255, 0.3);
+  border-radius: 6px;
+  background: rgba(0, 122, 255, 0.05);
+  color: #007aff;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.add-btn:hover {
+  background: rgba(0, 122, 255, 0.1);
+  border-color: #007aff;
+}
+
+.add-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+.empty-hint {
+  text-align: center;
+  padding: 20px;
+  color: #86868b;
+  font-size: 13px;
+}
+
+/* 编辑按钮样式 */
+.table-btn.edit {
+  color: #5856d6;
+}
+
+.table-btn.edit:hover {
+  background: rgba(88, 86, 214, 0.1);
 }
 </style>

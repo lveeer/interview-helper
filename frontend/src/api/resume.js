@@ -118,3 +118,12 @@ export const reparseResume = (id) => {
     timeout: 60000
   })
 }
+
+// 更新简历内容
+export const updateResume = (id, data) => {
+  return request({
+    url: `/resume/${id}`,
+    method: 'put',
+    data
+  })
+}
