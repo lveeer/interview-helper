@@ -1080,6 +1080,7 @@ onMounted(() => {
 
 .macos-textarea {
   width: 100%;
+  box-sizing: border-box;
   padding: 12px 14px;
   background: rgba(0, 0, 0, 0.02);
   border: 1px solid rgba(0, 0, 0, 0.1);
