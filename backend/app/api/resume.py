@@ -14,7 +14,8 @@ from app.schemas.resume import (
     OptimizationHistoryItem,
     ResumeCompareResult,
     ResumeRestoreRequest,
-    ResumeRestoreResponse
+    ResumeRestoreResponse,
+    ResumeUpdateRequest
 )
 from app.api.auth import get_current_user
 from app.services.resume_optimization_service import ResumeOptimizationService
@@ -476,6 +477,151 @@ async def restore_resume_version(
 
 # ========== 基础简历操作 API ==========
 # 注意：这些通用的 /{resume_id} 路由必须在所有带有子路径的路由之后定义
+
+
+@router.put("/{resume_id}")
+async def update_resume(
+    resume_id: int,
+    request: ResumeUpdateRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """完全更新简历内容（覆盖所有提供的字段）"""
+    from app.schemas.common import ApiResponse
+    from datetime import datetime as dt
+
+    logger.info(f"用户 {current_user.id} 尝试更新简历 {resume_id}")
+
+    # 验证简历所有权
+    resume = db.query(Resume).filter(
+        Resume.id == resume_id,
+        Resume.user_id == current_user.id
+    ).first()
+    if not resume:
+        logger.warning(f"简历不存在或无权限: resume_id={resume_id}, user_id={current_user.id}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="简历不存在"
+        )
+
+    try:
+        # 更新提供的字段
+        if request.personal_info is not None:
+            resume.personal_info = json.dumps(request.personal_info, ensure_ascii=False)
+        if request.education is not None:
+            resume.education = json.dumps(request.education, ensure_ascii=False)
+        if request.experience is not None:
+            resume.experience = json.dumps(request.experience, ensure_ascii=False)
+        if request.skills is not None:
+            resume.skills = json.dumps(request.skills, ensure_ascii=False)
+        if request.skills_raw is not None:
+            resume.skills_raw = json.dumps(request.skills_raw, ensure_ascii=False)
+        if request.projects is not None:
+            resume.projects = json.dumps(request.projects, ensure_ascii=False)
+        if request.highlights is not None:
+            resume.highlights = json.dumps(request.highlights, ensure_ascii=False)
+
+        # 更新时间戳
+        resume.updated_at = dt.now()
+
+        db.commit()
+        db.refresh(resume)
+
+        logger.info(f"简历 {resume_id} 更新成功")
+
+        return ApiResponse(
+            code=200,
+            message="简历更新成功",
+            data=ResumeResponse.model_validate(resume)
+        )
+    except Exception as e:
+        logger.error(f"简历更新失败: {e}", exc_info=True)
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"简历更新失败: {str(e)}"
+        )
+
+
+@router.patch("/{resume_id}")
+async def partial_update_resume(
+    resume_id: int,
+    request: ResumeUpdateRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """部分更新简历内容（仅更新提供的字段）"""
+    from app.schemas.common import ApiResponse
+    from datetime import datetime as dt
+
+    logger.info(f"用户 {current_user.id} 尝试部分更新简历 {resume_id}")
+
+    # 验证简历所有权
+    resume = db.query(Resume).filter(
+        Resume.id == resume_id,
+        Resume.user_id == current_user.id
+    ).first()
+    if not resume:
+        logger.warning(f"简历不存在或无权限: resume_id={resume_id}, user_id={current_user.id}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="简历不存在"
+        )
+
+    try:
+        # 检查是否有字段需要更新
+        update_fields = []
+        if request.personal_info is not None:
+            resume.personal_info = json.dumps(request.personal_info, ensure_ascii=False)
+            update_fields.append("personal_info")
+        if request.education is not None:
+            resume.education = json.dumps(request.education, ensure_ascii=False)
+            update_fields.append("education")
+        if request.experience is not None:
+            resume.experience = json.dumps(request.experience, ensure_ascii=False)
+            update_fields.append("experience")
+        if request.skills is not None:
+            resume.skills = json.dumps(request.skills, ensure_ascii=False)
+            update_fields.append("skills")
+        if request.skills_raw is not None:
+            resume.skills_raw = json.dumps(request.skills_raw, ensure_ascii=False)
+            update_fields.append("skills_raw")
+        if request.projects is not None:
+            resume.projects = json.dumps(request.projects, ensure_ascii=False)
+            update_fields.append("projects")
+        if request.highlights is not None:
+            resume.highlights = json.dumps(request.highlights, ensure_ascii=False)
+            update_fields.append("highlights")
+
+        if not update_fields:
+            logger.info(f"简历 {resume_id} 无字段需要更新")
+            return ApiResponse(
+                code=200,
+                message="无字段需要更新",
+                data=ResumeResponse.model_validate(resume)
+            )
+
+        # 更新时间戳
+        resume.updated_at = dt.now()
+
+        db.commit()
+        db.refresh(resume)
+
+        logger.info(f"简历 {resume_id} 部分更新成功，更新字段: {update_fields}")
+
+        return ApiResponse(
+            code=200,
+            message=f"简历更新成功，已更新字段: {', '.join(update_fields)}",
+            data=ResumeResponse.model_validate(resume)
+        )
+    except Exception as e:
+        logger.error(f"简历更新失败: {e}", exc_info=True)
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"简历更新失败: {str(e)}"
+        )
+
 
 @router.post("/{resume_id}/reparse")
 async def reparse_resume(

@@ -246,3 +246,15 @@ class ResumeRestoreRequest(BaseModel):
 class ResumeRestoreResponse(BaseModel):
     version: str
     restored_at: datetime
+
+
+# 简历编辑相关 Schema
+class ResumeUpdateRequest(BaseModel):
+    """简历更新请求模型 - 用于 PUT/PATCH 接口"""
+    personal_info: Optional[Dict[str, Any]] = None
+    education: Optional[List[Dict[str, Any]]] = None
+    experience: Optional[List[Dict[str, Any]]] = None
+    skills: Optional[List[Any]] = None
+    skills_raw: Optional[List[Any]] = None
+    projects: Optional[List[Dict[str, Any]]] = None
+    highlights: Optional[List[str]] = None
