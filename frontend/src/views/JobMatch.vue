@@ -32,6 +32,22 @@
             </div>
           </div>
 
+          <!-- 选择岗位 -->
+          <div class="form-group">
+            <label class="form-label">选择岗位（可选）</label>
+            <div class="select-wrapper">
+              <select v-model="matchForm.job_id" class="macos-select" @change="handleJobSelect">
+                <option value="">手动输入岗位描述</option>
+                <option v-for="job in jobList" :key="job.id" :value="job.id">
+                  {{ job.title }} - {{ job.company }}
+                </option>
+              </select>
+              <svg class="select-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </div>
+          </div>
+
           <!-- 岗位描述 -->
           <div class="form-group">
             <label class="form-label">岗位描述</label>
@@ -216,14 +232,16 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { getResumeList } from '@/api/resume'
-import { matchJob } from '@/api/job'
+import { matchJob, getJobList } from '@/api/job'
 
 const analyzing = ref(false)
 const resumeList = ref([])
+const jobList = ref([])
 const matchResult = ref(null)
 
 const matchForm = ref({
   resume_id: '',
+  job_id: '',
   job_description: ''
 })
 
@@ -235,6 +253,26 @@ const loadResumeList = async () => {
     }
   } catch (error) {
     console.error('加载简历列表失败:', error)
+  }
+}
+
+const loadJobList = async () => {
+  try {
+    const res = await getJobList()
+    if (res.code === 200) {
+      jobList.value = res.data || []
+    }
+  } catch (error) {
+    console.error('加载岗位列表失败:', error)
+  }
+}
+
+const handleJobSelect = () => {
+  if (matchForm.value.job_id) {
+    const job = jobList.value.find(j => j.id === matchForm.value.job_id)
+    if (job && job.description) {
+      matchForm.value.job_description = job.description
+    }
   }
 }
 
@@ -285,6 +323,7 @@ const handleMatch = async () => {
 const resetForm = () => {
   matchForm.value = {
     resume_id: '',
+    job_id: '',
     job_description: ''
   }
   matchResult.value = null
@@ -304,6 +343,7 @@ const getMatchLevel = (score) => {
 
 onMounted(() => {
   loadResumeList()
+  loadJobList()
 })
 </script>
 
